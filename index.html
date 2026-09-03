@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bilkades 2026 Serentak - SaaS Tabulasi Suara</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  .fade-in { animation: fadeIn 0.3s ease-in; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .live-dot { animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+  #cameraView { display: none; }
+  #cameraStream { width: 100%; max-width: 500px; border-radius: 12px; }
+  #cameraCanvas { display: none; }
+  #photoPreview { width: 100%; max-width: 500px; border-radius: 12px; }
+  .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<div id="loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+  <div class="text-center">
+    <div class="text-5xl mb-3">🗳️</div>
+    <p class="text-gray-500">Bilkades 2026 Serentak</p>
+  </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="min-h-screen flex items-center justify-center p-4 hidden">
+  <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md fade-in">
+    <div class="text-center mb-6">
+      <div class="text-5xl mb-2">🗳️</div>
+      <h1 class="text-2xl font-bold text-gray-800">Bilkades 2026 Serentak</h1>
+      <p class="text-gray-500 text-sm mt-1">SaaS Tabulasi Suara Real-Time</p>
+    </div>
+    <div class="flex gap-2 mb-6">
+      <button onclick="switchLogin('saksi')" id="tabSaksi" class="flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-blue-600 text-white">Login Saksi</button>
+      <button onclick="switchLogin('admin')" id="tabAdmin" class="flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-gray-100 text-gray-600">Login Admin</button>
+    </div>
+    <div id="saksiLogin">
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nama Saksi</label>
+          <input id="saksiName" type="text" placeholder="Nama lengkap saksi" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Kode Tim Kandidat</label>
+          <input id="saksiCode" type="text" placeholder="Contoh: KANDIDAT-01" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none uppercase">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nomor TPS</label>
+          <input id="saksiTps" type="number" placeholder="Contoh: 1" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <button onclick="loginSaksi()" id="saksiLoginBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">Masuk sebagai Saksi</button>
+      </div>
+    </div>
+    <div id="adminLogin" class="hidden">
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kandidat / Tim</label>
+          <input id="adminName" type="text" placeholder="Nama kandidat atau tim" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Kode Akses Admin</label>
+          <input id="adminCode" type="text" placeholder="Buat kode admin unik" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none uppercase">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nama Desa</label>
+          <input id="adminDesa" type="text" placeholder="Contoh: Sriamur" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <button onclick="loginAdmin()" id="adminLoginBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">Masuk / Daftar sebagai Admin</button>
+        <p class="text-xs text-gray-400 text-center">Pertama kali? Buat kode admin unik untuk mendaftarkan desa baru.</p>
+      </div>
+    </div>
+    <p class="text-center text-xs text-gray-400 mt-6">Bilkades 2026 Serentak - Production SaaS</p>
+  </div>
+</div>
+
+<!-- SAKSI PAGE -->
+<div id="saksiPage" class="hidden min-h-screen">
+  <div class="bg-blue-600 text-white p-4 sticky top-0 z-10 shadow-lg">
+    <div class="flex justify-between items-center">
+      <div>
+        <h2 class="font-bold text-lg">Saksi: <span id="saksiDisplayName"></span></h2>
+        <p class="text-blue-100 text-sm">TPS <span id="saksiDisplayTps"></span> - Desa <span id="saksiDisplayDesa"></span></p>
+      </div>
+      <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-red-600">Keluar</button>
+    </div>
+  </div>
+  <div class="p-4 max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="font-bold text-gray-800">Input Data Suara TPS <span id="tpsNumberLabel"></span></h3>
+        <span id="submitStatus" class="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-500">Belum Submit</span>
+      </div>
+      <div class="bg-blue-50 rounded-lg p-3 mb-4">
+        <p class="text-sm text-blue-800">Isi perolehan suara sesuai Form C1 di TPS. Data langsung terkirim ke dashboard admin.</p>
+      </div>
+      <div id="saksiKandidatList" class="space-y-3"></div>
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Suara Tidak Sah</label>
+        <input id="suaraTidakSah" type="number" min="0" value="0" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none">
+      </div>
+      <div class="mt-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">DPT (Daftar Pemilih Tetap)</label>
+        <input id="dptTotal" type="number" min="0" value="0" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+      </div>
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Foto Form C1</label>
+        <div id="cameraView" class="text-center">
+          <video id="cameraStream" autoplay playsinline></video>
+          <canvas id="cameraCanvas"></canvas>
+          <div class="flex gap-2 justify-center mt-3">
+            <button onclick="capturePhoto()" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold">Ambil Foto</button>
+            <button onclick="stopCamera()" class="bg-gray-400 text-white px-4 py-3 rounded-lg font-semibold">Batal</button>
+          </div>
+        </div>
+        <div id="photoPreviewBox" class="hidden">
+          <img id="photoPreview" class="mx-auto">
+          <div class="flex gap-2 justify-center mt-3">
+            <button onclick="retakePhoto()" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-semibold">Ambil Ulang</button>
+          </div>
+          <p class="text-center text-xs text-green-600 mt-2" id="photoStatus">Foto C1 siap dikirim</p>
+        </div>
+        <button onclick="startCamera()" id="openCameraBtn" class="w-full bg-gray-700 text-white py-3 rounded-lg font-semibold">Buka Kamera</button>
+        <p class="text-xs text-gray-400 mt-1 text-center">Atau pilih dari galeri:</p>
+        <input id="fotoC1" type="file" accept="image/*" class="w-full px-4 py-2 rounded-lg border border-gray-300 mt-1">
+      </div>
+      <button onclick="submitSuara()" id="submitBtn" class="w-full mt-5 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition">Kirim Data + Foto C1 ke Admin</button>
+    </div>
+    <div id="saksiHistory" class="bg-white rounded-xl shadow p-4 fade-in">
+      <h3 class="font-bold text-gray-800 mb-3">Riwayat Input</h3>
+      <div id="historyList" class="space-y-2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PAGE -->
+<div id="adminPage" class="hidden min-h-screen">
+  <div class="bg-gray-800 text-white p-4 sticky top-0 z-10 shadow-lg">
+    <div class="flex justify-between items-center">
+      <div>
+        <h2 class="font-bold text-lg">Dashboard - <span id="adminKandidatName"></span></h2>
+        <p class="text-gray-300 text-sm">Desa <span id="adminDesaName"></span></p>
+      </div>
+      <div class="flex gap-2 items-center">
+        <span class="flex items-center gap-1 text-green-400 text-sm"><span class="live-dot">Live</span></span>
+        <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-red-600">Keluar</button>
+      </div>
+    </div>
+  </div>
+  <div class="p-4 max-w-5xl mx-auto">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="bg-white rounded-xl shadow p-4 text-center">
+        <p class="text-3xl font-bold text-blue-600" id="statTpsInput">0</p>
+        <p class="text-xs text-gray-500 mt-1">TPS Sudah Input</p>
+      </div>
+      <div class="bg-white rounded-xl shadow p-4 text-center">
+        <p class="text-3xl font-bold text-orange-500" id="statTotalSuara">0</p>
+        <p class="text-xs text-gray-500 mt-1">Total Suara Sah</p>
+      </div>
+      <div class="bg-white rounded-xl shadow p-4 text-center">
+        <p class="text-3xl font-bold text-red-500" id="statTidakSah">0</p>
+        <p class="text-xs text-gray-500 mt-1">Suara Tidak Sah</p>
+      </div>
+      <div class="bg-white rounded-xl shadow p-4 text-center">
+        <p class="text-3xl font-bold text-green-600" id="statPartisipasi">0%</p>
+        <p class="text-xs text-gray-500 mt-1">Partisipasi</p>
+      </div>
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button onclick="exportPDF()" class="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition">Export PDF Rekapitulasi</button>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+      <h3 class="font-bold text-gray-800 mb-3">Grafik Perolehan Suara</h3>
+      <canvas id="chartSuara" height="100"></canvas>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+      <h3 class="font-bold text-gray-800 mb-3">Rekapitulasi Per Kandidat</h3>
+      <div id="adminKandidatResult" class="space-y-3"></div>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+      <h3 class="font-bold text-gray-800 mb-3">Detail Per TPS</h3>
+      <div id="adminTpsDetail" class="overflow-x-auto"></div>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+      <h3 class="font-bold text-gray-800 mb-3">Pengaturan Nomor WhatsApp Admin</h3>
+      <div class="bg-green-50 rounded-lg p-3 mb-3">
+        <p class="text-sm text-green-800">Foto C1 dari saksi akan diteruskan ke nomor WhatsApp ini.</p>
+      </div>
+      <div class="flex gap-2">
+        <input id="adminWaNumber" type="text" placeholder="Contoh: 6281234567890" class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none">
+        <button onclick="saveAdminWa()" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700">Simpan</button>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">Format: 62xxx (tanpa 0 di depan)</p>
+      <div id="waStatus" class="mt-2"></div>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+      <h3 class="font-bold text-gray-800 mb-3">Setup Calon Kepala Desa</h3>
+      <div class="flex gap-2 mb-3">
+        <input id="newKandidatName" type="text" placeholder="Nama calon kandidat" class="flex-1 px-4 py-2 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500">
+        <input id="newKandidatNo" type="number" placeholder="No Urut" class="w-24 px-4 py-2 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500">
+        <button onclick="addKandidat()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700">+ Tambah</button>
+      </div>
+      <div id="kandidatListAdmin" class="space-y-2"></div>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+      <h3 class="font-bold text-gray-800 mb-3">Manajemen Saksi & TPS</h3>
+      <div class="flex gap-2 mb-3">
+        <input id="newSaksiName" type="text" placeholder="Nama saksi" class="flex-1 px-4 py-2 rounded-lg border border-gray-300 outline-none">
+        <input id="newSaksiTps" type="number" placeholder="No TPS" class="w-24 px-4 py-2 rounded-lg border border-gray-300 outline-none">
+        <input id="newSaksiPhone" type="text" placeholder="No WA" class="w-40 px-4 py-2 rounded-lg border border-gray-300 outline-none">
+        <button onclick="addSaksi()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700">+ Tambah</button>
+      </div>
+      <div id="saksiListAdmin" class="space-y-2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =========== CONFIG ===========
+const API_URL = 'https://vesper-921ea8a1.base44.app/functions/pilkadesApi';
+let session = JSON.parse(localStorage.getItem('bilkades_session') || 'null');
+
+function setSession(s) { localStorage.setItem('bilkades_session', JSON.stringify(s)); session = s; }
+function clearSession() { localStorage.removeItem('bilkades_session'); session = null; }
+
+// =========== API CALL ===========
+async function callApi(action, payload) {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, payload })
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error('API Error:', err);
+    return { success: false, message: 'Koneksi gagal: ' + err.message };
+  }
+}
+
+// =========== LOGIN ===========
+function switchLogin(mode) {
+  if (mode === 'saksi') {
+    document.getElementById('tabSaksi').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-blue-600 text-white';
+    document.getElementById('tabAdmin').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-gray-100 text-gray-600';
+    document.getElementById('saksiLogin').classList.remove('hidden');
+    document.getElementById('adminLogin').classList.add('hidden');
+  } else {
+    document.getElementById('tabAdmin').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-blue-600 text-white';
+    document.getElementById('tabSaksi').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-gray-100 text-gray-600';
+    document.getElementById('saksiLogin').classList.add('hidden');
+    document.getElementById('adminLogin').classList.remove('hidden');
+  }
+}
+
+async function loginSaksi() {
+  const name = document.getElementById('saksiName').value.trim();
+  const code = document.getElementById('saksiCode').value.trim().toUpperCase();
+  const tps = parseInt(document.getElementById('saksiTps').value);
+  if (!name || !code || !tps) { alert('Mohon isi semua field'); return; }
+  
+  document.getElementById('saksiLoginBtn').innerHTML = '<span class="spinner"></span> Loading...';
+  document.getElementById('saksiLoginBtn').disabled = true;
+  
+  const res = await callApi('loginSaksi', { kode_admin: code, nomor_tps: tps, nama_saksi: name });
+  
+  document.getElementById('saksiLoginBtn').innerHTML = 'Masuk sebagai Saksi';
+  document.getElementById('saksiLoginBtn').disabled = false;
+  
+  if (!res.success) { alert(res.message); return; }
+  
+  setSession({ role: 'saksi', desa: res.desa, saksi: res.saksi, calonList: res.calonList });
+  showSaksiPage();
+}
+
+async function loginAdmin() {
+  const name = document.getElementById('adminName').value.trim();
+  const code = document.getElementById('adminCode').value.trim().toUpperCase();
+  const desa = document.getElementById('adminDesa').value.trim();
+  if (!name || !code || !desa) { alert('Mohon isi semua field'); return; }
+  
+  document.getElementById('adminLoginBtn').innerHTML = '<span class="spinner"></span> Loading...';
+  document.getElementById('adminLoginBtn').disabled = true;
+  
+  const res = await callApi('registerDesa', { nama_desa: desa, nama_kandidat_tim: name, kode_admin: code });
+  
+  document.getElementById('adminLoginBtn').innerHTML = 'Masuk / Daftar sebagai Admin';
+  document.getElementById('adminLoginBtn').disabled = false;
+  
+  if (!res.success) { alert(res.message); return; }
+  
+  setSession({ role: 'admin', desa: res.desa });
+  showAdminPage();
+}
+
+function logout() {
+  clearSession();
+  location.reload();
+}
+
+// =========== CAMERA ===========
+let cameraStream = null;
+let capturedPhoto = null;
+
+async function startCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    document.getElementById('cameraStream').srcObject = cameraStream;
+    document.getElementById('cameraView').style.display = 'block';
+    document.getElementById('openCameraBtn').style.display = 'none';
+    document.getElementById('photoPreviewBox').classList.add('hidden');
+  } catch (err) { alert('Tidak bisa akses kamera. Gunakan pilih dari galeri.'); }
+}
+
+function capturePhoto() {
+  const video = document.getElementById('cameraStream');
+  const canvas = document.getElementById('cameraCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
+  document.getElementById('photoPreview').src = capturedPhoto;
+  document.getElementById('photoPreviewBox').classList.remove('hidden');
+  document.getElementById('cameraView').style.display = 'none';
+  stopCamera();
+}
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  document.getElementById('cameraView').style.display = 'none';
+  document.getElementById('openCameraBtn').style.display = 'block';
+}
+
+function retakePhoto() {
+  capturedPhoto = null;
+  document.getElementById('photoPreviewBox').classList.add('hidden');
+  startCamera();
+}
+
+document.addEventListener('change', function(e) {
+  if (e.target.id === 'fotoC1' && e.target.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      capturedPhoto = ev.target.result;
+      document.getElementById('photoPreview').src = capturedPhoto;
+      document.getElementById('photoPreviewBox').classList.remove('hidden');
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  }
+});
+
+// =========== SAKSI PAGE ===========
+let saksiCalonList = [];
+
+function showSaksiPage() {
+  if (!session || session.role !== 'saksi') return;
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('saksiPage').classList.remove('hidden');
+  document.getElementById('saksiDisplayName').textContent = session.saksi.nama_saksi;
+  document.getElementById('saksiDisplayTps').textContent = session.saksi.nomor_tps;
+  document.getElementById('saksiDisplayDesa').textContent = session.desa.nama_desa;
+  document.getElementById('tpsNumberLabel').textContent = session.saksi.nomor_tps;
+  saksiCalonList = session.calonList || [];
+  renderSaksiKandidat();
+  loadSaksiHistory();
+}
+
+function renderSaksiKandidat(list) {
+  const calonList = list || saksiCalonList;
+  const container = document.getElementById('saksiKandidatList');
+  if (calonList.length === 0) {
+    container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Belum ada calon kandidat. Admin belum menambahkan calon.</p>';
+    return;
+  }
+  container.innerHTML = calonList.map(c => `
+    <div class="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+      <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">${c.no_urut}</div>
+      <div class="flex-1"><p class="font-medium text-gray-800">${c.nama_calon}</p></div>
+      <input type="number" min="0" value="0" id="suara_${c.id}" class="w-24 px-3 py-2 text-center rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-xl font-bold">
+    </div>
+  `).join('');
+}
+
+async function submitSuara() {
+  const suara = {};
+  let total = 0;
+  saksiCalonList.forEach(c => {
+    const val = parseInt(document.getElementById('suara_' + c.id).value) || 0;
+    suara[c.id] = val; total += val;
+  });
+  const tidakSah = parseInt(document.getElementById('suaraTidakSah').value) || 0;
+  const dpt = parseInt(document.getElementById('dptTotal').value) || 0;
+  
+  document.getElementById('submitBtn').innerHTML = '<span class="spinner"></span> Mengirim...';
+  document.getElementById('submitBtn').disabled = true;
+  
+  const res = await callApi('submitSuara', {
+    desa_id: session.desa.id, nomor_tps: session.saksi.nomor_tps,
+    suara_per_kandidat: suara, suara_tidak_sah: tidakSah,
+    dpt_total: dpt, submitted_by: session.saksi.nama_saksi
+  });
+  
+  document.getElementById('submitBtn').innerHTML = 'Kirim Data + Foto C1 ke Admin';
+  document.getElementById('submitBtn').disabled = false;
+  
+  if (!res.success) { alert('Gagal: ' + res.message); return; }
+  
+  // WhatsApp integration
+  if (capturedPhoto && session.desa.admin_wa_number) {
+    const msg = `*LAPORAN C1 - TPS ${session.saksi.nomor_tps}*\nDesa: ${session.desa.nama_desa}\nSaksi: ${session.saksi.nama_saksi}\nTotal Sah: ${total}\nTidak Sah: ${tidakSah}\nWaktu: ${new Date().toLocaleString('id-ID')}`;
+    const waUrl = `https://wa.me/${session.desa.admin_wa_number}?text=${encodeURIComponent(msg)}`;
+    if (confirm('Data terkirim! Kirim juga foto C1 via WhatsApp ke admin?')) {
+      window.open(waUrl, '_blank');
+    }
+  } else {
+    alert('Data suara TPS ' + session.saksi.nomor_tps + ' berhasil dikirim!\nTotal suara sah: ' + total);
+  }
+  
+  document.getElementById('submitStatus').textContent = 'Sudah Submit';
+  document.getElementById('submitStatus').className = 'text-xs px-3 py-1 rounded-full bg-green-100 text-green-600';
+  loadSaksiHistory();
+}
+
+async function loadSaksiHistory() {
+  const res = await callApi('getTabulasi', { desa_id: session.desa.id });
+  if (!res.success) return;
+  const list = document.getElementById('historyList');
+  if (res.suaraList.length === 0) { list.innerHTML = '<p class="text-gray-400 text-sm">Belum ada data</p>'; return; }
+  list.innerHTML = res.suaraList.map(s => {
+    const time = new Date(s.timestamp).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    let suaraText = '';
+    res.calonList.forEach(c => { if (s.suara_per_kandidat && s.suara_per_kandidat[c.id]) suaraText += `No.${c.no_urut}: ${s.suara_per_kandidat[c.id]} | `; });
+    return `<div class="bg-gray-50 rounded-lg p-3 border-l-4 border-green-500">
+      <div class="flex justify-between"><span class="font-semibold text-gray-700">TPS ${s.nomor_tps}</span><span class="text-xs text-gray-400">${time}</span></div>
+      <p class="text-sm text-gray-600 mt-1">${suaraText}</p>
+      <p class="text-xs text-gray-500 mt-1">Tdk sah: ${s.suara_tidak_sah} | DPT: ${s.dpt_total} | Sah: ${s.total_ah || s.total_sah || 0}</p>
+      <p class="text-xs text-blue-500">Oleh: ${s.submitted_by}</p>
+    </div>`;
+  }).join('');
+}
+
+// =========== ADMIN PAGE ===========
+let chartInstance = null;
+let adminData = null;
+
+function showAdminPage() {
+  if (!session || session.role !== 'admin') return;
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('adminPage').classList.remove('hidden');
+  document.getElementById('adminKandidatName').textContent = session.desa.nama_kandidat_tim;
+  document.getElementById('adminDesaName').textContent = session.desa.nama_desa;
+  if (session.desa.admin_wa_number) {
+    document.getElementById('adminWaNumber').value = session.desa.admin_wa_number;
+  }
+  renderAdmin();
+  // Auto-refresh every 3 seconds for real-time
+  if (window.adminRefresh) clearInterval(window.adminRefresh);
+  window.adminRefresh = setInterval(renderAdmin, 3000);
+}
+
+async function renderAdmin() {
+  const res = await callApi('getTabulasi', { desa_id: session.desa.id });
+  if (!res.success) return;
+  adminData = res;
+
+  // Stats
+  document.getElementById('statTpsInput').textContent = res.stats.tps_input;
+  document.getElementById('statTotalSuara').textContent = res.stats.total_sah.toLocaleString('id-ID');
+  document.getElementById('statTidakSah').textContent = res.stats.total_tidak_sah.toLocaleString('id-ID');
+  document.getElementById('statPartisipasi').textContent = res.stats.partisipasi + '%';
+
+  // Chart
+  const ctx = document.getElementById('chartSuara').getContext('2d');
+  const labels = res.calonList.map(c => 'No.' + c.no_urut + ' ' + c.nama_calon.split(' ')[0]);
+  const data = res.calonList.map(c => res.tabulasi[c.id] ? res.tabulasi[c.id].total_suara : 0);
+  const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels.length > 0 ? labels : ['Belum ada kandidat'], datasets: [{ label: 'Perolehan Suara', data: data.length > 0 ? data : [0], backgroundColor: colors.slice(0, labels.length), borderRadius: 8 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  // Per kandidat
+  const div = document.getElementById('adminKandidatResult');
+  if (res.calonList.length === 0) { div.innerHTML = '<p class="text-gray-400 text-sm">Belum ada kandidat.</p>'; }
+  else {
+    const maxSuara = Math.max(...data, 0);
+    div.innerHTML = res.calonList.map((c, i) => {
+      const total = res.tabulasi[c.id] ? res.tabulasi[c.id].total_suara : 0;
+      const persen = res.tabulasi[c.id] ? res.tabulasi[c.id].persentase : 0;
+      const isLeading = total === maxSuara && total > 0;
+      const barColor = colors[i % colors.length];
+      return `<div class="p-3 rounded-lg border-2 ${isLeading ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'}">
+        <div class="flex justify-between items-center mb-2">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-sm" style="background:${barColor}">${c.no_urut}</div>
+            <span class="font-semibold text-gray-800">${c.nama_calon}</span>
+            ${isLeading ? '<span class="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Leading</span>' : ''}
+          </div>
+          <span class="text-2xl font-bold" style="color:${barColor}">${total.toLocaleString('id-ID')}</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-3 mb-1"><div class="h-3 rounded-full transition-all duration-500" style="width:${persen}%; background:${barColor}"></div></div>
+        <p class="text-xs text-gray-500 text-right">${persen}%</p>
+      </div>`;
+    }).join('');
+  }
+
+  // TPS Detail
+  renderTpsDetail(res);
+  // Kandidat setup
+  renderKandidatSetup(res);
+  // Saksi setup
+  renderSaksiSetup(res);
+}
+
+function renderTpsDetail(res) {
+  const div = document.getElementById('adminTpsDetail');
+  if (res.suaraList.length === 0) { div.innerHTML = '<p class="text-gray-400 text-sm">Belum ada TPS yang submit</p>'; return; }
+  let html = '<table class="w-full text-sm"><thead><tr class="border-b-2 border-gray-200"><th class="text-left py-2 px-2">TPS</th>';
+  res.calonList.forEach(c => { html += `<th class="text-center py-2 px-2">No.${c.no_urut}</th>`; });
+  html += '<th class="text-center py-2 px-2">Tdk Sah</th><th class="text-center py-2 px-2">DPT</th><th class="text-center py-2 px-2">Saksi</th><th class="text-center py-2 px-2">Waktu</th></tr></thead><tbody>';
+  res.suaraList.forEach(s => {
+    html += `<tr class="border-b border-gray-100 hover:bg-blue-50"><td class="py-2 px-2 font-bold">TPS ${s.nomor_tps}</td>`;
+    res.calonList.forEach(c => { html += `<td class="text-center py-2 px-2">${s.suara_per_kandidat && s.suara_per_kandidat[c.id] || 0}</td>`; });
+    const time = new Date(s.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    html += `<td class="text-center py-2 px-2 text-red-500">${s.suara_tidak_sah}</td><td class="text-center py-2 px-2">${s.dpt_total}</td><td class="text-center py-2 px-2 text-xs">${s.submitted_by}</td><td class="text-center py-2 px-2 text-xs text-gray-400">${time}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  div.innerHTML = html;
+}
+
+function renderKandidatSetup(res) {
+  const div = document.getElementById('kandidatListAdmin');
+  if (res.calonList.length === 0) { div.innerHTML = '<p class="text-gray-400 text-sm">Belum ada kandidat</p>'; return; }
+  div.innerHTML = res.calonList.map(c => `
+    <div class="flex items-center justify-between bg-gray-50 rounded-lg p-2">
+      <div class="flex items-center gap-2">
+        <span class="bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">${c.no_urut}</span>
+        <span class="text-gray-700">${c.nama_calon}</span>
+      </div>
+      <button onclick="removeKandidat('${c.id}')" class="text-red-500 text-sm hover:underline">Hapus</button>
+    </div>`).join('');
+}
+
+function renderSaksiSetup(res) {
+  const div = document.getElementById('saksiListAdmin');
+  if (res.saksiList.length === 0) { div.innerHTML = '<p class="text-gray-400 text-sm">Belum ada saksi</p>'; return; }
+  div.innerHTML = res.saksiList.map(s => `
+    <div class="flex items-center justify-between bg-gray-50 rounded-lg p-2">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">${s.status_submit === 'submitted' ? 'Selesai' : 'Menunggu'}</span>
+        <div>
+          <span class="text-gray-700 font-medium">${s.nama_saksi}</span>
+          <span class="text-xs text-gray-400 ml-2">TPS ${s.nomor_tps} ${s.nomor_wa || ''}</span>
+        </div>
+      </div>
+      <button onclick="removeSaksi('${s.id}')" class="text-red-500 text-sm hover:underline">Hapus</button>
+    </div>`).join('');
+}
+
+async function addKandidat() {
+  const name = document.getElementById('newKandidatName').value.trim();
+  const no = parseInt(document.getElementById('newKandidatNo').value);
+  if (!name || !no) { alert('Isi nama dan no urut'); return; }
+  const res = await callApi('addKandidat', { desa_id: session.desa.id, no_urut: no, nama_calon: name });
+  if (res.success) { document.getElementById('newKandidatName').value = ''; document.getElementById('newKandidatNo').value = ''; renderAdmin(); }
+  else alert('Gagal: ' + res.message);
+}
+
+async function removeKandidat(id) {
+  if (!confirm('Hapus kandidat ini?')) return;
+  await callApi('removeKandidat', { kandidat_id: id });
+  renderAdmin();
+}
+
+async function addSaksi() {
+  const name = document.getElementById('newSaksiName').value.trim();
+  const tps = parseInt(document.getElementById('newSaksiTps').value);
+  const phone = document.getElementById('newSaksiPhone').value.trim();
+  if (!name || !tps) { alert('Isi nama dan TPS'); return; }
+  const res = await callApi('addSaksi', { desa_id: session.desa.id, nama_saksi: name, nomor_tps: tps, nomor_wa: phone });
+  if (res.success) { document.getElementById('newSaksiName').value = ''; document.getElementById('newSaksiTps').value = ''; document.getElementById('newSaksiPhone').value = ''; renderAdmin(); }
+  else alert('Gagal: ' + res.message);
+}
+
+async function removeSaksi(id) {
+  if (!confirm('Hapus saksi ini?')) return;
+  await callApi('removeSaksi', { saksi_id: id });
+  renderAdmin();
+}
+
+async function saveAdminWa() {
+  const num = document.getElementById('adminWaNumber').value.trim().replace(/[^0-9]/g, '');
+  if (!num) { document.getElementById('waStatus').innerHTML = '<p class="text-xs text-red-500">Nomor tidak valid</p>'; return; }
+  const res = await callApi('updateAdminWa', { desa_id: session.desa.id, admin_wa_number: num });
+  if (res.success) {
+    session.desa.admin_wa_number = num; setSession(session);
+    document.getElementById('waStatus').innerHTML = '<p class="text-xs text-green-600">Nomor WA tersimpan: ' + num + '</p>';
+    setTimeout(() => { document.getElementById('waStatus').innerHTML = ''; }, 3000);
+  }
+}
+
+// =========== EXPORT PDF ===========
+function exportPDF() {
+  if (!adminData) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(18); doc.setFont(undefined, 'bold');
+  doc.text('REKAPITULASI SUARA PILKADES', 105, 20, { align: 'center' });
+  doc.setFontSize(12); doc.setFont(undefined, 'normal');
+  doc.text('Desa: ' + adminData.desa.nama_desa, 105, 30, { align: 'center' });
+  doc.text('Tim: ' + adminData.desa.nama_kandidat_tim, 105, 37, { align: 'center' });
+  doc.text(new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), 105, 44, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text('TPS Input: ' + adminData.stats.tps_input, 14, 55);
+  doc.text('Total Sah: ' + adminData.stats.total_sah, 14, 61);
+  doc.text('Tidak Sah: ' + adminData.stats.total_tidak_sah, 14, 67);
+  doc.text('Partisipasi: ' + adminData.stats.partisipasi + '%', 14, 73);
+  doc.autoTable({
+    startY: 82,
+    head: [['No', 'Nama Kandidat', 'Total Suara', 'Persentase']],
+    body: adminData.calonList.map(c => {
+      const t = adminData.tabulasi[c.id] ? adminData.tabulasi[c.id].total_suara : 0;
+      const p = adminData.tabulasi[c.id] ? adminData.tabulasi[c.id].persentase + '%' : '0%';
+      return [c.no_urut, c.nama_calon, t.toLocaleString('id-ID'), p];
+    }),
+    theme: 'grid', headStyles: { fillColor: [37, 99, 235] }
+  });
+  if (adminData.suaraList.length > 0) {
+    let head = ['TPS']; adminData.calonList.forEach(c => head.push('No.' + c.no_urut)); head.push('Tdk Sah', 'DPT', 'Saksi');
+    let body = adminData.suaraList.map(s => {
+      let row = ['TPS ' + s.nomor_tps];
+      adminData.calonList.forEach(c => row.push(String(s.suara_per_kandidat && s.suara_per_kandidat[c.id] || 0)));
+      row.push(String(s.suara_tidak_sah), String(s.dpt_total), s.submitted_by);
+      return row;
+    });
+    doc.autoTable({ startY: doc.lastAutoTable.finalY + 10, head: [head], body: body, theme: 'striped', headStyles: { fillColor: [55, 65, 81] }, styles: { fontSize: 9 } });
+  }
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i); doc.setFontSize(8); doc.setFont(undefined, 'italic');
+    doc.text('Bilkades 2026 Serentak - ' + new Date().toLocaleString('id-ID'), 105, doc.internal.pageSize.height - 10, { align: 'center' });
+  }
+  doc.save('Rekapitulasi_' + adminData.desa.nama_desa + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
+}
+
+// =========== INIT ===========
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('loginPage').classList.remove('hidden');
+  if (session) {
+    if (session.role === 'saksi') showSaksiPage();
+    else if (session.role === 'admin') showAdminPage();
+  }
+});
+</script>
+</body>
+</html>
