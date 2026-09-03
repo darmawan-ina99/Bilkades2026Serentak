@@ -8,6 +8,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   body { font-family: 'Inter', system-ui, sans-serif; }
   .fade-in { animation: fadeIn 0.3s ease-in; }
@@ -18,7 +20,9 @@
   #cameraStream { width: 100%; max-width: 500px; border-radius: 12px; }
   #cameraCanvas { display: none; }
   #photoPreview { width: 100%; max-width: 500px; border-radius: 12px; }
-  .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
+  #mapSuara { height: 400px; border-radius: 12px; }
+.leaflet-popup-content { font-size: 13px; }
+.spinner { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
 </head>
@@ -181,6 +185,28 @@
       <h3 class="font-bold text-gray-800 mb-3">Grafik Perolehan Suara</h3>
       <canvas id="chartSuara" height="100"></canvas>
     </div>
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+      <h3 class="font-bold text-gray-800 mb-3">Peta Perolehan Suara Per TPS</h3>
+      <div id="mapSuara"></div>
+      <div id="mapLegend" class="mt-3 flex flex-wrap gap-3 text-xs"></div>
+      <div id="mapStatus" class="mt-2 text-xs text-gray-400"></div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+      <h3 class="font-bold text-gray-800 mb-3">Set Lokasi Desa di Peta</h3>
+      <div class="bg-blue-50 rounded-lg p-3 mb-3">
+        <p class="text-sm text-blue-800">Cari nama desa untuk set lokasi di peta. TPS akan otomatis tersebar di sekitar desa.</p>
+      </div>
+      <div class="flex gap-2 mb-2">
+        <input id="desaSearchInput" type="text" placeholder="Contoh: Sriamur, Bekasi" class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+        <button onclick="searchDesaLocation()" id="searchDesaBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">Cari Lokasi</button>
+      </div>
+      <div id="desaLocStatus" class="text-xs mt-1"></div>
+      <div class="mt-3 text-xs text-gray-500">
+        <p>Koordinat desa: <span id="desaCoords">Belum diset</span></p>
+      </div>
+    </div>
+
     <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
       <h3 class="font-bold text-gray-800 mb-3">Rekapitulasi Per Kandidat</h3>
       <div id="adminKandidatResult" class="space-y-3"></div>
@@ -521,6 +547,13 @@ async function renderAdmin() {
   renderKandidatSetup(res);
   // Saksi setup
   renderSaksiSetup(res);
+  // Initialize/update map
+  if (!mapInstance) {
+    initMap();
+  } else {
+    renderTpsMarkers();
+    renderMapLegend();
+  }
 }
 
 function renderTpsDetail(res) {
@@ -652,6 +685,247 @@ function exportPDF() {
     doc.text('Bilkades 2026 Serentak - ' + new Date().toLocaleString('id-ID'), 105, doc.internal.pageSize.height - 10, { align: 'center' });
   }
   doc.save('Rekapitulasi_' + adminData.desa.nama_desa + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
+}
+
+
+// =========== MAP (LEAFLET) ===========
+let mapInstance = null;
+let tpsMarkers = [];
+let desaMarker = null;
+const candidateColors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+
+function initMap() {
+  if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+  
+  // Default: Indonesia center
+  let lat = -2.5, lng = 118;
+  let zoom = 4;
+  
+  if (adminData && adminData.desa && adminData.desa.latitude) {
+    lat = adminData.desa.latitude;
+    lng = adminData.desa.longitude;
+    zoom = 14;
+  }
+  
+  mapInstance = L.map('mapSuara').setView([lat, lng], zoom);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'OpenStreetMap | Bilkades 2026',
+    maxZoom: 19
+  }).addTo(mapInstance);
+  
+  // Desa center marker
+  if (adminData && adminData.desa && adminData.desa.latitude) {
+    desaMarker = L.marker([lat, lng], { draggable: true }).addTo(mapInstance);
+    desaMarker.bindPopup('<b>Desa ' + adminData.desa.nama_desa + '</b><br>Pusat desa');
+    desaMarker.on('dragend', function(e) {
+      const pos = e.target.getLatLng();
+      saveDesaCoordinates(pos.lat, pos.lng);
+    });
+  }
+  
+  // TPS markers
+  renderTpsMarkers();
+  renderMapLegend();
+  
+  // Update status
+  if (adminData && adminData.desa) {
+    if (adminData.desa.latitude) {
+      document.getElementById('mapStatus').innerHTML = 'Lokasi desa: ' + adminData.desa.latitude.toFixed(4) + ', ' + adminData.desa.longitude.toFixed(4);
+      document.getElementById('desaCoords').textContent = adminData.desa.latitude.toFixed(4) + ', ' + adminData.desa.longitude.toFixed(4);
+    } else {
+      document.getElementById('mapStatus').innerHTML = 'Set lokasi desa dulu di bagian bawah untuk melihat TPS di peta.';
+    }
+  }
+  
+  setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 100);
+}
+
+function renderTpsMarkers() {
+  // Clear existing markers
+  tpsMarkers.forEach(m => mapInstance.removeLayer(m));
+  tpsMarkers = [];
+  
+  if (!adminData || !adminData.desa || !adminData.desa.latitude) return;
+  
+  const desaLat = adminData.desa.latitude;
+  const desaLng = adminData.desa.longitude;
+  
+  // Combine saksiList and suaraList
+  const tpsData = {};
+  adminData.saksiList.forEach(s => {
+    tpsData[s.nomor_tps] = { saksi: s, suara: null };
+  });
+  adminData.suaraList.forEach(s => {
+    if (!tpsData[s.nomor_tps]) tpsData[s.nomor_tps] = { saksi: null, suara: s };
+    else tpsData[s.nomor_tps].suara = s;
+  });
+  
+  const tpsList = Object.values(tpsData).sort((a, b) => {
+    const aTps = a.saksi ? a.saksi.nomor_tps : a.suara.nomor_tps;
+    const bTps = b.saksi ? b.saksi.nomor_tps : b.suara.nomor_tps;
+    return aTps - bTps;
+  });
+  
+  tpsList.forEach((tps, idx) => {
+    const nomorTps = tps.saksi ? tps.saksi.nomor_tps : tps.suara.nomor_tps;
+    
+    // Use TPS coordinates if available, otherwise auto-distribute around desa
+    let tLat, tLng;
+    if (tps.saksi && tps.saksi.latitude) {
+      tLat = tps.saksi.latitude;
+      tLng = tps.saksi.longitude;
+    } else {
+      // Auto-distribute in a spiral around desa center
+      const angle = (idx * 60) * Math.PI / 180;
+      const radius = 0.003 + (idx * 0.0005);
+      tLat = desaLat + radius * Math.sin(angle);
+      tLng = desaLng + radius * Math.cos(angle);
+    }
+    
+    // Determine leading candidate at this TPS
+    let leadingColor = '#9ca3af'; // gray for no data
+    let popupContent = '<b>TPS ' + nomorTps + '</b><br>Belum ada data';
+    let totalSuara = 0;
+    
+    if (tps.suara && tps.suara.suara_per_kandidat) {
+      let maxVal = 0;
+      let leadingCalon = null;
+      adminData.calonList.forEach(c => {
+        const val = tps.suara.suara_per_kandidat[c.id] || 0;
+        totalSuara += val;
+        if (val > maxVal) { maxVal = val; leadingCalon = c; }
+      });
+      
+      if (leadingCalon) {
+        const calonIdx = adminData.calonList.findIndex(c => c.id === leadingCalon.id);
+        leadingColor = candidateColors[calonIdx % candidateColors.length];
+      }
+      
+      // Build popup
+      let rows = '';
+      adminData.calonList.forEach(c => {
+        const val = tps.suara.suara_per_kandidat[c.id] || 0;
+        const isLead = c.id === leadingCalon?.id;
+        rows += '<tr><td>No.' + c.no_urut + ' ' + c.nama_calon + '</td><td style="text-align:right;font-weight:' + (isLead ? 'bold' : 'normal') + '">' + val + '</td></tr>';
+      });
+      popupContent = '<b>TPS ' + nomorTps + '</b><br>' +
+        '<table style="font-size:12px"><tr><th style="text-align:left">Kandidat</th><th style="text-align:right">Suara</th></tr>' +
+        rows +
+        '<tr><td><b>Tidak Sah</b></td><td style="text-align:right">' + (tps.suara.suara_tidak_sah || 0) + '</td></tr>' +
+        '<tr><td><b>DPT</b></td><td style="text-align:right">' + (tps.suara.dpt_total || 0) + '</td></tr></table>' +
+        '<br><small>Saksi: ' + (tps.suara.submitted_by || '-') + '</small>';
+    }
+    
+    // Circle marker with color
+    const radius = totalSuara > 0 ? Math.max(8, Math.min(25, 8 + totalSuara / 20)) : 8;
+    const marker = L.circleMarker([tLat, tLng], {
+      radius: radius,
+      fillColor: leadingColor,
+      color: '#fff',
+      weight: 2,
+      fillOpacity: 0.8
+    }).addTo(mapInstance);
+    
+    marker.bindPopup(popupContent);
+    
+    // Label
+    marker.bindTooltip('TPS ' + nomorTps, { permanent: false, direction: 'top' });
+    
+    // Make draggable for admin to adjust position
+    if (!tps.saksi || !tps.saksi.latitude) {
+      marker.on('click', function() {
+        if (confirm('Set koordinat TPS ' + nomorTps + ' di lokasi ini?')) {
+          const pos = marker.getLatLng();
+          const saksiId = tps.saksi ? tps.saksi.id : null;
+          if (saksiId) {
+            saveTpsCoordinates(saksiId, pos.lat, pos.lng);
+          }
+        }
+      });
+    }
+    
+    tpsMarkers.push(marker);
+  });
+}
+
+function renderMapLegend() {
+  if (!adminData || adminData.calonList.length === 0) return;
+  const legend = document.getElementById('mapLegend');
+  legend.innerHTML = adminData.calonList.map((c, i) => {
+    const color = candidateColors[i % candidateColors.length];
+    return '<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:50%;background:' + color + ';display:inline-block"></span>' + c.nama_calon + '</span>';
+  }).join('') + '<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:50%;background:#9ca3af;display:inline-block"></span>Belum ada data</span>';
+}
+
+async function searchDesaLocation() {
+  const query = document.getElementById('desaSearchInput').value.trim();
+  if (!query) { alert('Isi nama desa'); return; }
+  
+  document.getElementById('searchDesaBtn').innerHTML = 'Mencari...';
+  document.getElementById('searchDesaBtn').disabled = true;
+  document.getElementById('desaLocStatus').innerHTML = '<span class="spinner"></span> Mencari lokasi...';
+  
+  const res = await callApi('geocodeDesa', { nama_desa: query });
+  
+  document.getElementById('searchDesaBtn').innerHTML = 'Cari Lokasi';
+  document.getElementById('searchDesaBtn').disabled = false;
+  
+  if (!res.success) {
+    document.getElementById('desaLocStatus').innerHTML = '<p class="text-red-500">Lokasi tidak ditemukan. Coba format: NamaDesa, Kabupaten</p>';
+    return;
+  }
+  
+  document.getElementById('desaLocStatus').innerHTML = '<p class="text-green-600">Ditemukan: ' + res.display + '</p>';
+  
+  // Save coordinates
+  await saveDesaCoordinates(res.latitude, res.longitude);
+  
+  // Update map view
+  if (mapInstance) {
+    mapInstance.setView([res.latitude, res.longitude], 14);
+    if (desaMarker) { mapInstance.removeLayer(desaMarker); }
+    desaMarker = L.marker([res.latitude, res.longitude], { draggable: true }).addTo(mapInstance);
+    desaMarker.bindPopup('<b>Desa ' + adminData.desa.nama_desa + '</b><br>Pusat desa (drag untuk geser)');
+    desaMarker.on('dragend', function(e) {
+      const pos = e.target.getLatLng();
+      saveDesaCoordinates(pos.lat, pos.lng);
+    });
+  }
+  
+  // Re-render TPS markers around new center
+  if (!adminData.desa.latitude) {
+    adminData.desa.latitude = res.latitude;
+    adminData.desa.longitude = res.longitude;
+  }
+  renderTpsMarkers();
+  
+  document.getElementById('desaCoords').textContent = res.latitude.toFixed(4) + ', ' + res.longitude.toFixed(4);
+  document.getElementById('mapStatus').innerHTML = 'Lokasi desa: ' + res.latitude.toFixed(4) + ', ' + res.longitude.toFixed(4);
+}
+
+async function saveDesaCoordinates(lat, lng) {
+  const res = await callApi('updateDesaCoordinates', {
+    desa_id: session.desa.id, latitude: lat, longitude: lng
+  });
+  if (res.success) {
+    if (adminData) {
+      adminData.desa.latitude = lat;
+      adminData.desa.longitude = lng;
+    }
+    session.desa.latitude = lat;
+    session.desa.longitude = lng;
+    setSession(session);
+    document.getElementById('desaCoords').textContent = lat.toFixed(4) + ', ' + lng.toFixed(4);
+  }
+}
+
+async function saveTpsCoordinates(saksiId, lat, lng) {
+  const res = await callApi('updateTpsCoordinates', {
+    saksi_id: saksiId, latitude: lat, longitude: lng
+  });
+  if (res.success) {
+    renderAdmin();
+  }
 }
 
 // =========== INIT ===========
