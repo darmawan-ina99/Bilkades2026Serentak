@@ -328,7 +328,7 @@ async function loginSaksi() {
   
   if (!res.success) { alert(res.message); return; }
   
-  setSession({ role: 'saksi', desa: res.desa, saksi: res.saksi, calonList: res.calonList });
+  setSession({ role: 'saksi', desa: res.desa, saksi: res.saksi, calonList: res.calonList, suaraData: res.suaraData || null });
   showSaksiPage();
 }
 
@@ -419,9 +419,13 @@ function showSaksiPage() {
   document.getElementById('saksiDisplayTps').textContent = session.saksi.nomor_tps;
   document.getElementById('saksiDisplayDesa').textContent = session.desa.nama_desa;
   document.getElementById('tpsNumberLabel').textContent = session.saksi.nomor_tps;
-  saksiCalonList = session.calonList || [];
+  saksiCalonList = (session.calonList || []).slice().sort((a, b) => a.no_urut - b.no_urut);
   renderSaksiKandidat();
   loadSaksiHistory();
+  // Prefill data lama kalau sudah pernah submit
+  if (session.suaraData) {
+    prefillSaksiData(session.suaraData);
+  }
 }
 
 function renderSaksiKandidat(list) {
@@ -438,6 +442,21 @@ function renderSaksiKandidat(list) {
       <input type="number" min="0" value="0" id="suara_${c.id}" class="w-24 px-3 py-2 text-center rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none text-xl font-bold">
     </div>
   `).join('');
+}
+
+function prefillSaksiData(sd) {
+  // Isi form dengan data yang sudah dikirim sebelumnya
+  if (sd.suara_per_kandidat) {
+    Object.entries(sd.suara_per_kandidat).forEach(([kId, val]) => {
+      const el = document.getElementById('suara_' + kId);
+      if (el) el.value = val;
+    });
+  }
+  document.getElementById('suaraTidakSah').value = sd.suara_tidak_sah || 0;
+  document.getElementById('dptTotal').value = sd.dpt_total || 0;
+  const st = document.getElementById('submitStatus');
+  st.textContent = 'Sudah Submit';
+  st.className = 'text-xs px-3 py-1 rounded-full bg-merah-100 text-merah-700 font-semibold';
 }
 
 async function submitSuara() {
