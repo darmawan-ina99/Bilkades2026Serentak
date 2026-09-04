@@ -5,13 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bilkades 2026 Serentak - SaaS Tabulasi Suara</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        merah: {50:'#fef2f2',100:'#fee2e2',500:'#ef4444',600:'#dc2626',700:'#b91c1c',800:'#991b1b',900:'#7f1d1d'},
+        kuning: {50:'#fffbeb',100:'#fef3c7',400:'#fbbf24',500:'#f59e0b',600:'#d97706',700:'#b45309'},
+        biru: {50:'#eff6ff',100:'#dbeafe',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8',800:'#1e40af',900:'#1e3a8a'}
+      },
+      fontFamily: { sans: ['Poppins', 'system-ui', 'sans-serif'] }
+    }
+  }
+}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-  body { font-family: 'Inter', system-ui, sans-serif; }
+  body { font-family: 'Poppins', system-ui, sans-serif; }
   .fade-in { animation: fadeIn 0.3s ease-in; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .live-dot { animation: pulse 1.5s infinite; }
@@ -22,63 +38,69 @@
   #photoPreview { width: 100%; max-width: 500px; border-radius: 12px; }
   #mapSuara { height: 400px; border-radius: 12px; }
 .leaflet-popup-content { font-size: 13px; }
-.spinner { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
+.tricolor { display:flex; height:6px; }
+.tricolor div { flex:1; }
+.tricolor .c1 { background:#dc2626; }
+.tricolor .c2 { background:#f59e0b; }
+.tricolor .c3 { background:#1d4ed8; }
+.spinner { border: 3px solid #f3f3f3; border-top: 3px solid #dc2626; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gradient-to-br from-biru-50 via-white to-kuning-50 min-h-screen" style="min-height:100vh">
 
 <div id="loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
   <div class="text-center">
     <div class="text-5xl mb-3">🗳️</div>
-    <p class="text-gray-500">Bilkades 2026 Serentak</p>
+    <p class="text-gray-800 font-bold">Bilkades 2026 Serentak</p>
+    <div class="tricolor mt-3 rounded-full overflow-hidden"><div class="c1"></div><div class="c2"></div><div class="c3"></div></div>
   </div>
 </div>
 
 <!-- LOGIN PAGE -->
 <div id="loginPage" class="min-h-screen flex items-center justify-center p-4 hidden">
-  <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md fade-in">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md fade-in border-t-8" style="border-image: linear-gradient(to right, #dc2626, #f59e0b, #1d4ed8) 1;">
     <div class="text-center mb-6">
       <div class="text-5xl mb-2">🗳️</div>
       <h1 class="text-2xl font-bold text-gray-800">Bilkades 2026 Serentak</h1>
       <p class="text-gray-500 text-sm mt-1">SaaS Tabulasi Suara Real-Time</p>
     </div>
     <div class="flex gap-2 mb-6">
-      <button onclick="switchLogin('saksi')" id="tabSaksi" class="flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-blue-600 text-white">Login Saksi</button>
-      <button onclick="switchLogin('admin')" id="tabAdmin" class="flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-gray-100 text-gray-600">Login Admin</button>
+      <button onclick="switchLogin('saksi')" id="tabSaksi" class="flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-merah-600 text-white shadow-md">Login Saksi</button>
+      <button onclick="switchLogin('admin')" id="tabAdmin" class="flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-gray-100 text-gray-700">Login Admin</button>
     </div>
     <div id="saksiLogin">
       <div class="space-y-3">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Nama Saksi</label>
-          <input id="saksiName" type="text" placeholder="Nama lengkap saksi" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+          <input id="saksiName" type="text" placeholder="Nama lengkap saksi" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none">
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Kode Tim Kandidat</label>
-          <input id="saksiCode" type="text" placeholder="Contoh: KANDIDAT-01" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none uppercase">
+          <input id="saksiCode" type="text" placeholder="Contoh: KANDIDAT-01" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none uppercase">
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Nomor TPS</label>
-          <input id="saksiTps" type="number" placeholder="Contoh: 1" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+          <input id="saksiTps" type="number" placeholder="Contoh: 1" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none">
         </div>
-        <button onclick="loginSaksi()" id="saksiLoginBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">Masuk sebagai Saksi</button>
+        <button onclick="loginSaksi()" id="saksiLoginBtn" class="w-full bg-merah-600 text-white py-3 rounded-lg font-semibold hover:bg-merah-700 transition shadow-md">Masuk sebagai Saksi</button>
       </div>
     </div>
     <div id="adminLogin" class="hidden">
       <div class="space-y-3">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kandidat / Tim</label>
-          <input id="adminName" type="text" placeholder="Nama kandidat atau tim" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+          <input id="adminName" type="text" placeholder="Nama kandidat atau tim" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none">
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Kode Akses Admin</label>
-          <input id="adminCode" type="text" placeholder="Buat kode admin unik" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none uppercase">
+          <input id="adminCode" type="text" placeholder="Buat kode admin unik" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none uppercase">
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Nama Desa</label>
-          <input id="adminDesa" type="text" placeholder="Contoh: Sriamur" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+          <input id="adminDesa" type="text" placeholder="Contoh: Sriamur" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none">
         </div>
-        <button onclick="loginAdmin()" id="adminLoginBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">Masuk / Daftar sebagai Admin</button>
+        <button onclick="loginAdmin()" id="adminLoginBtn" class="w-full bg-merah-600 text-white py-3 rounded-lg font-semibold hover:bg-merah-700 transition shadow-md">Masuk / Daftar sebagai Admin</button>
         <p class="text-xs text-gray-400 text-center">Pertama kali? Buat kode admin unik untuk mendaftarkan desa baru.</p>
       </div>
     </div>
@@ -88,23 +110,24 @@
 
 <!-- SAKSI PAGE -->
 <div id="saksiPage" class="hidden min-h-screen">
-  <div class="bg-blue-600 text-white p-4 sticky top-0 z-10 shadow-lg">
+  <div class="bg-gradient-to-r from-merah-700 via-merah-600 to-kuning-600 text-white p-4 sticky top-0 z-10 shadow-xl">
     <div class="flex justify-between items-center">
       <div>
-        <h2 class="font-bold text-lg">Saksi: <span id="saksiDisplayName"></span></h2>
-        <p class="text-blue-100 text-sm">TPS <span id="saksiDisplayTps"></span> - Desa <span id="saksiDisplayDesa"></span></p>
+        <h2 class="font-bold text-lg drop-shadow">Saksi: <span id="saksiDisplayName"></span></h2>
+        <p class="text-amber-100 text-sm font-medium">TPS <span id="saksiDisplayTps"></span> - Desa <span id="saksiDisplayDesa"></span></p>
       </div>
-      <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-red-600">Keluar</button>
+      <button onclick="logout()" class="bg-amber-400 text-merah-900 px-3 py-2 rounded-lg text-sm font-bold hover:bg-amber-300">Keluar</button>
     </div>
   </div>
+  <div class="tricolor"><div class="c1"></div><div class="c2"></div><div class="c3"></div></div>
   <div class="p-4 max-w-2xl mx-auto">
-    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
+    <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in border-t-4 border-merah-500">
       <div class="flex justify-between items-center mb-3">
         <h3 class="font-bold text-gray-800">Input Data Suara TPS <span id="tpsNumberLabel"></span></h3>
-        <span id="submitStatus" class="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-500">Belum Submit</span>
+        <span id="submitStatus" class="text-xs px-3 py-1 rounded-full bg-kuning-100 text-kuning-700 font-semibold">Belum Submit</span>
       </div>
-      <div class="bg-blue-50 rounded-lg p-3 mb-4">
-        <p class="text-sm text-blue-800">Isi perolehan suara sesuai Form C1 di TPS. Data langsung terkirim ke dashboard admin.</p>
+      <div class="bg-biru-50 border-l-4 border-biru-600 rounded-lg p-3 mb-4">
+        <p class="text-sm text-biru-900 font-medium">Isi perolehan suara sesuai Form C1 di TPS. Data langsung terkirim ke dashboard admin.</p>
       </div>
       <div id="saksiKandidatList" class="space-y-3"></div>
       <div class="mt-4">
@@ -113,7 +136,7 @@
       </div>
       <div class="mt-3">
         <label class="block text-sm font-medium text-gray-700 mb-1">DPT (Daftar Pemilih Tetap)</label>
-        <input id="dptTotal" type="number" min="0" value="0" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
+        <input id="dptTotal" type="number" min="0" value="0" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none">
       </div>
       <div class="mt-4">
         <label class="block text-sm font-medium text-gray-700 mb-2">Foto Form C1</label>
@@ -121,22 +144,22 @@
           <video id="cameraStream" autoplay playsinline></video>
           <canvas id="cameraCanvas"></canvas>
           <div class="flex gap-2 justify-center mt-3">
-            <button onclick="capturePhoto()" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold">Ambil Foto</button>
+            <button onclick="capturePhoto()" class="bg-merah-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-merah-700 shadow-md">Ambil Foto</button>
             <button onclick="stopCamera()" class="bg-gray-400 text-white px-4 py-3 rounded-lg font-semibold">Batal</button>
           </div>
         </div>
         <div id="photoPreviewBox" class="hidden">
           <img id="photoPreview" class="mx-auto">
           <div class="flex gap-2 justify-center mt-3">
-            <button onclick="retakePhoto()" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-semibold">Ambil Ulang</button>
+            <button onclick="retakePhoto()" class="bg-kuning-500 text-merah-900 px-4 py-2 rounded-lg font-bold hover:bg-kuning-400">Ambil Ulang</button>
           </div>
           <p class="text-center text-xs text-green-600 mt-2" id="photoStatus">Foto C1 siap dikirim</p>
         </div>
-        <button onclick="startCamera()" id="openCameraBtn" class="w-full bg-gray-700 text-white py-3 rounded-lg font-semibold">Buka Kamera</button>
+        <button onclick="startCamera()" id="openCameraBtn" class="w-full bg-biru-700 text-white py-3 rounded-lg font-semibold hover:bg-biru-800 shadow-md">Buka Kamera</button>
         <p class="text-xs text-gray-400 mt-1 text-center">Atau pilih dari galeri:</p>
         <input id="fotoC1" type="file" accept="image/*" class="w-full px-4 py-2 rounded-lg border border-gray-300 mt-1">
       </div>
-      <button onclick="submitSuara()" id="submitBtn" class="w-full mt-5 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition">Kirim Data + Foto C1 ke Admin</button>
+      <button onclick="submitSuara()" id="submitBtn" class="w-full mt-5 bg-gradient-to-r from-merah-600 via-merah-500 to-kuning-500 text-white py-3 rounded-lg font-bold hover:opacity-90 transition shadow-lg">Kirim Data + Foto C1 ke Admin</button>
     </div>
     <div id="saksiHistory" class="bg-white rounded-xl shadow p-4 fade-in">
       <h3 class="font-bold text-gray-800 mb-3">Riwayat Input</h3>
@@ -147,7 +170,7 @@
 
 <!-- ADMIN PAGE -->
 <div id="adminPage" class="hidden min-h-screen">
-  <div class="bg-gray-800 text-white p-4 sticky top-0 z-10 shadow-lg">
+  <div class="bg-gradient-to-r from-biru-900 via-biru-800 to-biru-700 text-white p-4 sticky top-0 z-10 shadow-xl">
     <div class="flex justify-between items-center">
       <div>
         <h2 class="font-bold text-lg">Dashboard - <span id="adminKandidatName"></span></h2>
@@ -155,31 +178,32 @@
       </div>
       <div class="flex gap-2 items-center">
         <span class="flex items-center gap-1 text-green-400 text-sm"><span class="live-dot">Live</span></span>
-        <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-red-600">Keluar</button>
+        <button onclick="logout()" class="bg-merah-600 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-merah-500 border border-amber-400">Keluar</button>
       </div>
     </div>
   </div>
+  <div class="tricolor"><div class="c1"></div><div class="c2"></div><div class="c3"></div></div>
   <div class="p-4 max-w-5xl mx-auto">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
       <div class="bg-white rounded-xl shadow p-4 text-center">
-        <p class="text-3xl font-bold text-blue-600" id="statTpsInput">0</p>
-        <p class="text-xs text-gray-500 mt-1">TPS Sudah Input</p>
+        <p class="text-3xl font-bold text-biru-700" id="statTpsInput">0</p>
+        <p class="text-xs text-gray-700 font-semibold mt-1">TPS Sudah Input</p>
       </div>
       <div class="bg-white rounded-xl shadow p-4 text-center">
-        <p class="text-3xl font-bold text-orange-500" id="statTotalSuara">0</p>
-        <p class="text-xs text-gray-500 mt-1">Total Suara Sah</p>
+        <p class="text-3xl font-bold text-merah-600" id="statTotalSuara">0</p>
+        <p class="text-xs text-gray-700 font-semibold mt-1">Total Suara Sah</p>
       </div>
       <div class="bg-white rounded-xl shadow p-4 text-center">
-        <p class="text-3xl font-bold text-red-500" id="statTidakSah">0</p>
-        <p class="text-xs text-gray-500 mt-1">Suara Tidak Sah</p>
+        <p class="text-3xl font-bold text-kuning-600" id="statTidakSah">0</p>
+        <p class="text-xs text-gray-700 font-semibold mt-1">Suara Tidak Sah</p>
       </div>
       <div class="bg-white rounded-xl shadow p-4 text-center">
-        <p class="text-3xl font-bold text-green-600" id="statPartisipasi">0%</p>
-        <p class="text-xs text-gray-500 mt-1">Partisipasi</p>
+        <p class="text-3xl font-bold" id="statPartisipasi" style="background:linear-gradient(to right,#dc2626,#d97706,#1d4ed8);-webkit-background-clip:text;background-clip:text;color:transparent;">0%</p>
+        <p class="text-xs text-gray-700 font-semibold mt-1">Partisipasi</p>
       </div>
     </div>
     <div class="flex gap-2 mb-4">
-      <button onclick="exportPDF()" class="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition">Export PDF Rekapitulasi</button>
+      <button onclick="exportPDF()" class="flex-1 bg-gradient-to-r from-merah-600 to-merah-700 text-white py-3 rounded-lg font-bold hover:opacity-90 transition shadow-lg">Export PDF Rekapitulasi</button>
     </div>
     <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
       <h3 class="font-bold text-gray-800 mb-3">Grafik Perolehan Suara</h3>
@@ -194,12 +218,12 @@
 
     <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
       <h3 class="font-bold text-gray-800 mb-3">Set Lokasi Desa di Peta</h3>
-      <div class="bg-blue-50 rounded-lg p-3 mb-3">
-        <p class="text-sm text-blue-800">Cari nama desa untuk set lokasi di peta. TPS akan otomatis tersebar di sekitar desa.</p>
+      <div class="bg-biru-50 border-l-4 border-biru-600 rounded-lg p-3 mb-3">
+        <p class="text-sm text-biru-900 font-medium">Cari nama desa untuk set lokasi di peta. TPS akan otomatis tersebar di sekitar desa.</p>
       </div>
       <div class="flex gap-2 mb-2">
-        <input id="desaSearchInput" type="text" placeholder="Contoh: Sriamur, Bekasi" class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none">
-        <button onclick="searchDesaLocation()" id="searchDesaBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">Cari Lokasi</button>
+        <input id="desaSearchInput" type="text" placeholder="Contoh: Sriamur, Bekasi" class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none">
+        <button onclick="searchDesaLocation()" id="searchDesaBtn" class="bg-biru-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-biru-800 shadow-md">Cari Lokasi</button>
       </div>
       <div id="desaLocStatus" class="text-xs mt-1"></div>
       <div class="mt-3 text-xs text-gray-500">
@@ -217,12 +241,12 @@
     </div>
     <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
       <h3 class="font-bold text-gray-800 mb-3">Pengaturan Nomor WhatsApp Admin</h3>
-      <div class="bg-green-50 rounded-lg p-3 mb-3">
-        <p class="text-sm text-green-800">Foto C1 dari saksi akan diteruskan ke nomor WhatsApp ini.</p>
+      <div class="bg-kuning-50 border-l-4 border-kuning-500 rounded-lg p-3 mb-3">
+        <p class="text-sm text-kuning-700 font-medium">Foto C1 dari saksi akan diteruskan ke nomor WhatsApp ini.</p>
       </div>
       <div class="flex gap-2">
         <input id="adminWaNumber" type="text" placeholder="Contoh: 6281234567890" class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none">
-        <button onclick="saveAdminWa()" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700">Simpan</button>
+        <button onclick="saveAdminWa()" class="bg-biru-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-biru-800 shadow-md">Simpan</button>
       </div>
       <p class="text-xs text-gray-400 mt-2">Format: 62xxx (tanpa 0 di depan)</p>
       <div id="waStatus" class="mt-2"></div>
@@ -230,9 +254,9 @@
     <div class="bg-white rounded-xl shadow p-4 mb-4 fade-in">
       <h3 class="font-bold text-gray-800 mb-3">Setup Calon Kepala Desa</h3>
       <div class="flex gap-2 mb-3">
-        <input id="newKandidatName" type="text" placeholder="Nama calon kandidat" class="flex-1 px-4 py-2 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500">
-        <input id="newKandidatNo" type="number" placeholder="No Urut" class="w-24 px-4 py-2 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500">
-        <button onclick="addKandidat()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700">+ Tambah</button>
+        <input id="newKandidatName" type="text" placeholder="Nama calon kandidat" class="flex-1 px-4 py-2 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-merah-500">
+        <input id="newKandidatNo" type="number" placeholder="No Urut" class="w-24 px-4 py-2 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-merah-500">
+        <button onclick="addKandidat()" class="bg-biru-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-biru-800 shadow-md">+ Tambah</button>
       </div>
       <div id="kandidatListAdmin" class="space-y-2"></div>
     </div>
@@ -242,7 +266,7 @@
         <input id="newSaksiName" type="text" placeholder="Nama saksi" class="flex-1 px-4 py-2 rounded-lg border border-gray-300 outline-none">
         <input id="newSaksiTps" type="number" placeholder="No TPS" class="w-24 px-4 py-2 rounded-lg border border-gray-300 outline-none">
         <input id="newSaksiPhone" type="text" placeholder="No WA" class="w-40 px-4 py-2 rounded-lg border border-gray-300 outline-none">
-        <button onclick="addSaksi()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700">+ Tambah</button>
+        <button onclick="addSaksi()" class="bg-kuning-500 text-merah-900 px-4 py-2 rounded-lg font-bold hover:bg-kuning-400 shadow-md">+ Tambah</button>
       </div>
       <div id="saksiListAdmin" class="space-y-2"></div>
     </div>
@@ -276,12 +300,12 @@ async function callApi(action, payload) {
 // =========== LOGIN ===========
 function switchLogin(mode) {
   if (mode === 'saksi') {
-    document.getElementById('tabSaksi').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-blue-600 text-white';
+    document.getElementById('tabSaksi').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-merah-600 text-white shadow-md';
     document.getElementById('tabAdmin').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-gray-100 text-gray-600';
     document.getElementById('saksiLogin').classList.remove('hidden');
     document.getElementById('adminLogin').classList.add('hidden');
   } else {
-    document.getElementById('tabAdmin').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-blue-600 text-white';
+    document.getElementById('tabAdmin').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-merah-600 text-white shadow-md';
     document.getElementById('tabSaksi').className = 'flex-1 py-2.5 rounded-lg font-semibold text-sm transition bg-gray-100 text-gray-600';
     document.getElementById('saksiLogin').classList.add('hidden');
     document.getElementById('adminLogin').classList.remove('hidden');
@@ -409,9 +433,9 @@ function renderSaksiKandidat(list) {
   }
   container.innerHTML = calonList.map(c => `
     <div class="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-      <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">${c.no_urut}</div>
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-merah-600 to-merah-800 text-white flex items-center justify-center font-bold shadow">${c.no_urut}</div>
       <div class="flex-1"><p class="font-medium text-gray-800">${c.nama_calon}</p></div>
-      <input type="number" min="0" value="0" id="suara_${c.id}" class="w-24 px-3 py-2 text-center rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-xl font-bold">
+      <input type="number" min="0" value="0" id="suara_${c.id}" class="w-24 px-3 py-2 text-center rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-merah-500 outline-none text-xl font-bold">
     </div>
   `).join('');
 }
@@ -452,7 +476,7 @@ async function submitSuara() {
   }
   
   document.getElementById('submitStatus').textContent = 'Sudah Submit';
-  document.getElementById('submitStatus').className = 'text-xs px-3 py-1 rounded-full bg-green-100 text-green-600';
+  document.getElementById('submitStatus').className = 'text-xs px-3 py-1 rounded-full bg-merah-100 text-merah-700 font-semibold';
   loadSaksiHistory();
 }
 
@@ -465,7 +489,7 @@ async function loadSaksiHistory() {
     const time = new Date(s.timestamp).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
     let suaraText = '';
     res.calonList.forEach(c => { if (s.suara_per_kandidat && s.suara_per_kandidat[c.id]) suaraText += `No.${c.no_urut}: ${s.suara_per_kandidat[c.id]} | `; });
-    return `<div class="bg-gray-50 rounded-lg p-3 border-l-4 border-green-500">
+    return `<div class="bg-gray-50 rounded-lg p-3 border-l-4 border-biru-600">
       <div class="flex justify-between"><span class="font-semibold text-gray-700">TPS ${s.nomor_tps}</span><span class="text-xs text-gray-400">${time}</span></div>
       <p class="text-sm text-gray-600 mt-1">${suaraText}</p>
       <p class="text-xs text-gray-500 mt-1">Tdk sah: ${s.suara_tidak_sah} | DPT: ${s.dpt_total} | Sah: ${s.total_ah || s.total_sah || 0}</p>
@@ -508,7 +532,7 @@ async function renderAdmin() {
   const ctx = document.getElementById('chartSuara').getContext('2d');
   const labels = res.calonList.map(c => 'No.' + c.no_urut + ' ' + c.nama_calon.split(' ')[0]);
   const data = res.calonList.map(c => res.tabulasi[c.id] ? res.tabulasi[c.id].total_suara : 0);
-  const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+  const colors = ['#dc2626', '#f59e0b', '#2563eb', '#7c3aed', '#059669', '#db2777'];
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(ctx, {
     type: 'bar',
@@ -526,12 +550,12 @@ async function renderAdmin() {
       const persen = res.tabulasi[c.id] ? res.tabulasi[c.id].persentase : 0;
       const isLeading = total === maxSuara && total > 0;
       const barColor = colors[i % colors.length];
-      return `<div class="p-3 rounded-lg border-2 ${isLeading ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'}">
+      return `<div class="p-3 rounded-lg border-2 ${isLeading ? 'border-kuning-400 bg-kuning-50 shadow-md' : 'border-gray-200 bg-gray-50'}">
         <div class="flex justify-between items-center mb-2">
           <div class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-sm" style="background:${barColor}">${c.no_urut}</div>
             <span class="font-semibold text-gray-800">${c.nama_calon}</span>
-            ${isLeading ? '<span class="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Leading</span>' : ''}
+            ${isLeading ? '<span class="text-xs bg-gradient-to-r from-merah-600 to-merah-500 text-white px-2 py-0.5 rounded-full font-semibold">Leading</span>' : ''}
           </div>
           <span class="text-2xl font-bold" style="color:${barColor}">${total.toLocaleString('id-ID')}</span>
         </div>
@@ -578,7 +602,7 @@ function renderKandidatSetup(res) {
   div.innerHTML = res.calonList.map(c => `
     <div class="flex items-center justify-between bg-gray-50 rounded-lg p-2">
       <div class="flex items-center gap-2">
-        <span class="bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">${c.no_urut}</span>
+        <span class="bg-gradient-to-br from-biru-600 to-biru-800 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow">${c.no_urut}</span>
         <span class="text-gray-700">${c.nama_calon}</span>
       </div>
       <button onclick="removeKandidat('${c.id}')" class="text-red-500 text-sm hover:underline">Hapus</button>
@@ -591,7 +615,7 @@ function renderSaksiSetup(res) {
   div.innerHTML = res.saksiList.map(s => `
     <div class="flex items-center justify-between bg-gray-50 rounded-lg p-2">
       <div class="flex items-center gap-2">
-        <span class="text-lg">${s.status_submit === 'submitted' ? 'Selesai' : 'Menunggu'}</span>
+        <span class="inline-block w-3 h-3 rounded-full ${s.status_submit === 'submitted' ? 'bg-merah-600' : 'bg-kuning-400'}"></span>
         <div>
           <span class="text-gray-700 font-medium">${s.nama_saksi}</span>
           <span class="text-xs text-gray-400 ml-2">TPS ${s.nomor_tps} ${s.nomor_wa || ''}</span>
@@ -667,7 +691,7 @@ function exportPDF() {
       const p = adminData.tabulasi[c.id] ? adminData.tabulasi[c.id].persentase + '%' : '0%';
       return [c.no_urut, c.nama_calon, t.toLocaleString('id-ID'), p];
     }),
-    theme: 'grid', headStyles: { fillColor: [37, 99, 235] }
+    theme: 'grid', headStyles: { fillColor: [220, 38, 38] }
   });
   if (adminData.suaraList.length > 0) {
     let head = ['TPS']; adminData.calonList.forEach(c => head.push('No.' + c.no_urut)); head.push('Tdk Sah', 'DPT', 'Saksi');
@@ -677,7 +701,7 @@ function exportPDF() {
       row.push(String(s.suara_tidak_sah), String(s.dpt_total), s.submitted_by);
       return row;
     });
-    doc.autoTable({ startY: doc.lastAutoTable.finalY + 10, head: [head], body: body, theme: 'striped', headStyles: { fillColor: [55, 65, 81] }, styles: { fontSize: 9 } });
+    doc.autoTable({ startY: doc.lastAutoTable.finalY + 10, head: [head], body: body, theme: 'striped', headStyles: { fillColor: [29, 78, 216] }, styles: { fontSize: 9 } });
   }
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
@@ -692,7 +716,7 @@ function exportPDF() {
 let mapInstance = null;
 let tpsMarkers = [];
 let desaMarker = null;
-const candidateColors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+const candidateColors = ['#dc2626', '#f59e0b', '#2563eb', '#7c3aed', '#059669', '#db2777'];
 
 function initMap() {
   if (mapInstance) { mapInstance.remove(); mapInstance = null; }
