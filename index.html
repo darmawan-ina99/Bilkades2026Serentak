@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bilkades 2026 Serentak - SaaS Tabulasi Suara</title>
+<title>Pilkades 2026 Serentak - SaaS Tabulasi Suara</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -52,7 +52,7 @@ tailwind.config = {
 <div id="loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
   <div class="text-center">
     <div class="text-5xl mb-3">🗳️</div>
-    <p class="text-gray-800 font-bold">Bilkades 2026 Serentak</p>
+    <p class="text-gray-800 font-bold">Pilkades 2026 Serentak</p>
     <div class="tricolor mt-3 rounded-full overflow-hidden"><div class="c1"></div><div class="c2"></div><div class="c3"></div></div>
   </div>
 </div>
@@ -62,7 +62,7 @@ tailwind.config = {
   <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md fade-in border-t-8" style="border-image: linear-gradient(to right, #dc2626, #f59e0b, #1d4ed8) 1;">
     <div class="text-center mb-6">
       <div class="text-5xl mb-2">🗳️</div>
-      <h1 class="text-2xl font-bold text-gray-800">Bilkades 2026 Serentak</h1>
+      <h1 class="text-2xl font-bold text-gray-800">Pilkades 2026 Serentak</h1>
       <p class="text-gray-500 text-sm mt-1">SaaS Tabulasi Suara Real-Time</p>
     </div>
     <div class="flex gap-2 mb-6">
@@ -104,7 +104,7 @@ tailwind.config = {
         <p class="text-xs text-gray-400 text-center">Pertama kali? Buat kode admin unik untuk mendaftarkan desa baru.</p>
       </div>
     </div>
-    <p class="text-center text-xs text-gray-400 mt-6">Bilkades 2026 Serentak - Production SaaS</p>
+    <p class="text-center text-xs text-gray-400 mt-6">Pilkades 2026 Serentak - Production SaaS</p>
   </div>
 </div>
 
@@ -276,10 +276,10 @@ tailwind.config = {
 <script>
 // =========== CONFIG ===========
 const API_URL = 'https://vesper-921ea8a1.base44.app/functions/pilkadesApi';
-let session = JSON.parse(localStorage.getItem('bilkades_session') || 'null');
+let session = JSON.parse(localStorage.getItem('pilkades_session') || 'null');
 
-function setSession(s) { localStorage.setItem('bilkades_session', JSON.stringify(s)); session = s; }
-function clearSession() { localStorage.removeItem('bilkades_session'); session = null; }
+function setSession(s) { localStorage.setItem('pilkades_session', JSON.stringify(s)); session = s; }
+function clearSession() { localStorage.removeItem('pilkades_session'); session = null; }
 
 // =========== API CALL ===========
 async function callApi(action, payload) {
@@ -706,7 +706,7 @@ function exportPDF() {
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i); doc.setFontSize(8); doc.setFont(undefined, 'italic');
-    doc.text('Bilkades 2026 Serentak - ' + new Date().toLocaleString('id-ID'), 105, doc.internal.pageSize.height - 10, { align: 'center' });
+    doc.text('Pilkades 2026 Serentak - ' + new Date().toLocaleString('id-ID'), 105, doc.internal.pageSize.height - 10, { align: 'center' });
   }
   doc.save('Rekapitulasi_' + adminData.desa.nama_desa + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
 }
@@ -733,7 +733,7 @@ function initMap() {
   
   mapInstance = L.map('mapSuara').setView([lat, lng], zoom);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: 'OpenStreetMap | Bilkades 2026',
+    attribution: 'OpenStreetMap | Pilkades 2026',
     maxZoom: 19
   }).addTo(mapInstance);
   
