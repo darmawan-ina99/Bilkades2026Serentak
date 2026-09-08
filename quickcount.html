@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pilkades Pro Quick Count — Real-Time untuk Tim Kandidat</title>
+<style>
+  :root{--hijau:#0b6e4f;--gelap:#0a1613;--emas:#f0b429;--merah:#e5484d;--abu:#a9bdb5;--card:#12261f;--line:#1e3a2f}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--gelap);color:#eef6f2;line-height:1.5;padding-bottom:40px}
+  .wrap{max-width:480px;margin:0 auto;padding:16px}
+  .brand{text-align:center;padding:26px 0 18px}
+  .brand .logo{font-size:28px;font-weight:800;letter-spacing:.5px}
+  .brand .logo span{color:var(--emas)}
+  .brand p{color:var(--abu);font-size:13px;margin-top:4px}
+  .btn{display:block;width:100%;padding:14px;border:none;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:10px}
+  .btn-emas{background:var(--emas);color:#2b1f00}
+  .btn-hijau{background:var(--hijau);color:#fff}
+  .btn-outline{background:transparent;border:1.5px solid var(--line);color:#eef6f2}
+  .btn:disabled{opacity:.5;cursor:wait}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:12px}
+  .card h3{font-size:15px;margin-bottom:10px;color:#fff}
+  label{display:block;font-size:13px;color:var(--abu);margin:10px 0 4px}
+  input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#0d1f18;color:#fff;font-size:15px}
+  input:focus{outline:2px solid var(--hijau)}
+  .hidden{display:none}
+  .role-btn{display:flex;align-items:center;gap:14px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;cursor:pointer;width:100%;margin-top:12px;color:#fff}
+  .role-btn .ic{font-size:30px}
+  .role-btn small{display:block;color:var(--abu);font-weight:400;margin-top:2px}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .kode-chip{background:#0d1f18;border:1px dashed var(--emas);color:var(--emas);padding:6px 12px;border-radius:8px;font-weight:700;font-size:14px}
+  .rank-row{margin-top:10px}
+  .rank-head{display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px}
+  .rank-head b{color:#fff}
+  .bar{height:14px;background:#0d1f18;border-radius:8px;overflow:hidden}
+  .bar>div{height:100%;background:linear-gradient(90deg,var(--hijau),#19b57e);border-radius:8px;transition:width .6s}
+  .lead{background:linear-gradient(90deg,var(--emas),#ffdd88)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  .stat{background:#0d1f18;border-radius:10px;padding:10px;text-align:center}
+  .stat .v{font-size:18px;font-weight:800;color:#fff}
+  .stat .l{font-size:11px;color:var(--abu)}
+  .list-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .del{background:none;border:none;color:var(--merah);cursor:pointer;font-size:18px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--hijau);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;opacity:0;transition:.3s;z-index:99}
+  .toast.show{opacity:1}
+  .pulse{display:inline-block;width:8px;height:8px;background:#19b57e;border-radius:50%;animation:p 1.5s infinite;margin-right:6px}
+  @keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+  a{color:#7fe0b8}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="viewLanding">
+    <div class="brand">
+      <div class="logo">Pilkades<span>Pro</span> Quick Count</div>
+      <p>Real-time monitoring untuk tim saksi kandidat</p>
+    </div>
+    <button class="role-btn" onclick="show('admin')"><span class="ic">🎯</span><span><b>Ketua Tim / Kandidat</b><small>Bikin ruang quick count, pantau hasil live</small></span></button>
+    <button class="role-btn" onclick="show('saksi')"><span class="ic">📋</span><span><b>Saksi</b><small>Input hasil dari TPS kamu</small></span></button>
+  </div>
+
+  <!-- ============ ADMIN ============ -->
+  <div id="viewAdminLogin" class="hidden">
+    <div class="brand"><div class="logo">Pilkades<span>Pro</span> Quick Count</div><p>Masuk sebagai Ketua Tim</p></div>
+    <div class="card">
+      <label>Nama Tim Kandidat (mis: Tim Satu Tujuan)</label>
+      <input id="timNama" placeholder="Nama tim">
+      <label>Kode Tim (buatan sendiri, mis: SATU2026)</label>
+      <input id="timKode" placeholder="Kode tim" style="text-transform:uppercase">
+      <button class="btn btn-emas" onclick="adminLogin()">Masuk / Buat Ruang</button>
+      <button class="btn btn-outline" onclick="show('landing')">Kembali</button>
+    </div>
+  </div>
+
+  <div id="viewAdmin" class="hidden">
+    <div class="topbar">
+      <div><b id="adminTimNama">Tim</b><br><small style="color:var(--abu)">Ruang Quick Count</small></div>
+      <div class="kode-chip" id="adminKode">XXXX</div>
+    </div>
+
+    <div class="card">
+      <h3>📲 Ajak Saksi Kamu</h3>
+      <p style="font-size:13px;color:var(--abu)">Saksi tinggal buka link ini, pilih SAKSI, masukkan kode tim di atas, nomor TPS, dan nama mereka.</p>
+      <button class="btn btn-hijau" onclick="shareKeSaksi()">Bagikan via WhatsApp</button>
+    </div>
+
+    <div class="card">
+      <h3>👤 Daftar Kandidat yang Diperlombakan</h3>
+      <div id="kandidatList"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input id="kandNo" type="number" placeholder="No." style="width:70px">
+        <input id="kandNama" placeholder="Nama kandidat">
+        <button class="btn btn-emas" style="width:auto;margin:0;padding:0 16px" onclick="addKandidat()">+</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="topbar"><h3 style="margin:0">📊 Hasil Live</h3><span style="font-size:12px;color:var(--abu)"><span class="pulse"></span>auto-refresh</span></div>
+      <div id="liveRank"></div>
+      <div class="stats">
+        <div class="stat"><div class="v" id="stTps">0</div><div class="l">TPS MASUK</div></div>
+        <div class="stat"><div class="v" id="stSaksi">0</div><div class="l">SAKSI</div></div>
+        <div class="stat"><div class="v" id="stSah">0</div><div class="l">SUARA SAH</div></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="v" id="stTdk">0</div><div class="l">TIDAK SAH</div></div>
+        <div class="stat"><div class="v" id="stDpt">0</div><div class="l">TOTAL DPT</div></div>
+        <div class="stat"><div class="v" id="stPart">0%</div><div class="l">PARTISIPASI</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>⚙️ Nomor WA Ketua (untuk terima foto C1)</h3>
+      <input id="waKetua" placeholder="08xxxxxxxxxx">
+      <button class="btn btn-hijau" onclick="simpanWa()">Simpan</button>
+    </div>
+
+    <button class="btn btn-outline" onclick="logout()">Keluar</button>
+  </div>
+
+  <!-- ============ SAKSI ============ -->
+  <div id="viewSaksiLogin" class="hidden">
+    <div class="brand"><div class="logo">Pilkades<span>Pro</span> Quick Count</div><p>Masuk sebagai Saksi</p></div>
+    <div class="card">
+      <label>Kode Tim (dari ketua kamu)</label>
+      <input id="sakKode" placeholder="Kode tim" style="text-transform:uppercase">
+      <label>Nomor TPS kamu</label>
+      <input id="sakTps" type="number" placeholder="Contoh: 5">
+      <label>Nama kamu</label>
+      <input id="sakNama" placeholder="Nama saksi">
+      <button class="btn btn-emas" onclick="saksiLogin()">Masuk</button>
+      <button class="btn btn-outline" onclick="show('landing')">Kembali</button>
+    </div>
+  </div>
+
+  <div id="viewSaksi" class="hidden">
+    <div class="topbar">
+      <div><b id="saksiNama">Saksi</b><br><small style="color:var(--abu)" id="saksiTpsLabel">TPS</small></div>
+      <div style="font-size:12px;color:var(--abu)" id="saksiTimLabel"></div>
+    </div>
+    <div class="card">
+      <h3>✍️ Hasil di TPS kamu</h3>
+      <div id="inputKandidat"></div>
+      <label>Suara tidak sah</label>
+      <input id="sakTdk" type="number" value="0" min="0">
+      <label>Total DPT di TPS ini</label>
+      <input id="sakDpt" type="number" value="0" min="0">
+      <label>Foto Form C1 (bukti)</label>
+      <input id="sakFoto" type="file" accept="image/*">
+      <button class="btn btn-emas" id="btnSubmit" onclick="saksiSubmit()">Kirim Hasil</button>
+      <p class="hidden" style="font-size:12px;color:#7fe0b8;margin-top:8px" id="saksiOk">✔ Terkirim. Terima kasih!</p>
+      <button class="btn btn-hijau hidden" id="btnWaFoto" onclick="kirimFotoWa()">Kirim Foto C1 ke Ketua via WA</button>
+    </div>
+    <button class="btn btn-outline" onclick="logout()">Keluar</button>
+  </div>
+
+  <div class="brand" style="padding-bottom:0">
+    <p style="font-size:11px">Pilkades Pro — Quick Count untuk Tim Kandidat · Demo: darmawan-ina99.github.io/Bilkades2026Serentak/quickcount.html</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL = 'https://vesper-921ea8a1.base44.app/functions/pilkadesApi';
+let admin = JSON.parse(localStorage.getItem('qc_admin') || 'null');
+let saksi = JSON.parse(localStorage.getItem('qc_saksi') || 'null');
+let calonCache = [];
+let timer = null;
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+async function api(action, payload){
+  try{
+    const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,payload})});
+    return await r.json();
+  }catch(e){return {success:false,message:'Koneksi gagal'};}
+}
+function show(v){
+  ['landing','adminLogin','admin','saksiLogin','saksi'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).classList.add('hidden'));
+  const map={landing:'viewLanding',adminLogin:'viewAdminLogin',admin:'viewAdmin',saksiLogin:'viewSaksiLogin',saksi:'viewSaksi'};
+  document.getElementById(map[v]).classList.remove('hidden');
+  if(v==='admin')startLive();
+  else stopLive();
+  if(v==='saksi')loadSaksiForm();
+}
+function stopLive(){if(timer){clearInterval(timer);timer=null;}}
+function startLive(){stopLive();loadLive();timer=setInterval(loadLive,8000);}
+
+// ---------- ADMIN ----------
+async function adminLogin(){
+  const nama=document.getElementById('timNama').value.trim();
+  const kode=document.getElementById('timKode').value.trim().toUpperCase();
+  if(!nama||!kode){toast('Isi nama tim dan kode tim');return;}
+  const r=await api('registerDesa',{nama_desa:nama,nama_kandidat_tim:nama,kode_admin:kode});
+  if(r.success&&r.desa){
+    admin={desa:r.desa};
+    localStorage.setItem('qc_admin',JSON.stringify(admin));
+    document.getElementById('adminTimNama').textContent=r.desa.nama_desa;
+    document.getElementById('adminKode').textContent=r.desa.kode_admin;
+    document.getElementById('waKetua').value=r.desa.admin_wa_number||'';
+    show('admin');loadKandidat();
+  } else toast(r.message||'Gagal masuk');
+}
+async function loadKandidat(){
+  const r=await api('getTabulasi',{desa_id:admin.desa.id});
+  const list=r.calonList||[];
+  calonCache=list;
+  const el=document.getElementById('kandidatList');
+  el.innerHTML=list.length?list.map(k=>`<div class="list-item"><span>${k.no_urut}. ${k.nama_calon}</span><button class="del" onclick="hapusKandidat('${k.id}')">✕</button></div>`).join(''):'<p style="font-size:13px;color:var(--abu)">Belum ada kandidat — tambahkan dulu</p>';
+}
+async function addKandidat(){
+  const no=parseInt(document.getElementById('kandNo').value);
+  const nama=document.getElementById('kandNama').value.trim();
+  if(!no||!nama){toast('Isi nomor urut dan nama');return;}
+  const r=await api('addKandidat',{desa_id:admin.desa.id,no_urut:no,nama_calon:nama});
+  if(r.success!==false){document.getElementById('kandNama').value='';loadKandidat();toast('Kandidat ditambahkan');}
+  else toast(r.message);
+}
+async function hapusKandidat(id){
+  if(!confirm('Hapus kandidat ini?'))return;
+  await api('removeKandidat',{kandidat_id:id});
+  loadKandidat();
+}
+function shareKeSaksi(){
+  const url=location.href.split('?')[0];
+  const txt=`*QUICK COUNT TIM ${admin.desa.nama_desa}*\n\nSaksi, begini caranya:\n1. Buka link: ${url}\n2. Pilih SAKSI\n3. Kode Tim: *${admin.desa.kode_admin}*\n4. Isi nomor TPS kamu + nama kamu\n5. Setelah hitung selesai, masukkan hasilnya\n\nHasil langsung masuk dashboard tim. Terima kasih!`;
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
+async function simpanWa(){
+  const wa=document.getElementById('waKetua').value.trim();
+  const r=await api('updateAdminWa',{desa_id:admin.desa.id,admin_wa_number:wa});
+  if(r.success!==false){admin.desa.admin_wa_number=wa;localStorage.setItem('qc_admin',JSON.stringify(admin));toast('Nomor WA ketua tersimpan');}
+  else toast(r.message);
+}
+async function loadLive(){
+  if(!admin)return;
+  const r=await api('getTabulasi',{desa_id:admin.desa.id});
+  if(!r.success&&r.desa===undefined){toast(r.message||'Gagal memuat');return;}
+  const tabs=Object.values(r.tabulasi||{}).sort((a,b)=>b.total_suara-a.total_suara);
+  const max=tabs.length?Math.max(...tabs.map(t=>t.total_suara),1):1;
+  document.getElementById('liveRank').innerHTML=tabs.length?tabs.map((t,i)=>`
+    <div class="rank-row">
+      <div class="rank-head"><b>${i===0?'🏆 ':''}${i+1}. ${t.kandidat.nama_calon}</b><span>${t.total_suara.toLocaleString('id-ID')} (${t.persentase||0}%)</span></div>
+      <div class="bar"><div class="${i===0?'lead':''}" style="width:${Math.round(t.total_suara/max*100)}%"></div></div>
+    </div>`).join(''):'<p style="font-size:13px;color:var(--abu)">Belum ada data. Tambahkan kandidat lalu bagikan kode tim ke saksi.</p>';
+  const s=r.stats||{};
+  document.getElementById('stTps').textContent=s.tps_input||0;
+  document.getElementById('stSaksi').textContent=(r.saksiList||[]).length;
+  document.getElementById('stSah').textContent=(s.total_sah||0).toLocaleString('id-ID');
+  document.getElementById('stTdk').textContent=(s.total_tidak_sah||0).toLocaleString('id-ID');
+  document.getElementById('stDpt').textContent=(s.total_dpt||0).toLocaleString('id-ID');
+  document.getElementById('stPart').textContent=(s.partisipasi||0)+'%';
+}
+
+// ---------- SAKSI ----------
+async function saksiLogin(){
+  const kode=document.getElementById('sakKode').value.trim().toUpperCase();
+  const tps=parseInt(document.getElementById('sakTps').value);
+  const nama=document.getElementById('sakNama').value.trim();
+  if(!kode||!tps||!nama){toast('Lengkapi semua kolom');return;}
+  const r=await api('loginSaksi',{kode_admin:kode,nomor_tps:tps,nama_saksi:nama});
+  if(r.success&&r.desa){
+    saksi={desa:r.desa,saksi:r.saksi,nama,tps};
+    localStorage.setItem('qc_saksi',JSON.stringify(saksi));
+    document.getElementById('saksiNama').textContent=nama;
+    document.getElementById('saksiTpsLabel').textContent='Saksi TPS '+tps;
+    document.getElementById('saksiTimLabel').textContent='Tim: '+r.desa.nama_desa;
+    show('saksi');
+  } else toast(r.message||'Kode tim tidak ditemukan');
+}
+async function loadSaksiForm(){
+  const r=await api('getTabulasi',{desa_id:saksi.desa.id});
+  const list=r.calonList||[];
+  calonCache=list;
+  document.getElementById('inputKandidat').innerHTML=list.length?list.map(k=>`
+    <label>${k.no_urut}. ${k.nama_calon}</label>
+    <input type="number" class="kandInput" data-id="${k.id}" data-nama="${k.nama_calon}" value="0" min="0">`).join('')
+    :'<p style="font-size:13px;color:var(--abu)">Ketua belum menambahkan daftar kandidat. Hubungi ketua tim kamu.</p>';
+}
+async function saksiSubmit(){
+  const inputs=[...document.querySelectorAll('.kandInput')];
+  if(!inputs.length){toast('Belum ada kandidat');return;}
+  const suara={};
+  inputs.forEach(i=>suara[i.dataset.id]=Number(i.value)||0);
+  const btn=document.getElementById('btnSubmit');
+  btn.disabled=true;btn.textContent='Mengirim...';
+  const r=await api('submitSuara',{
+    desa_id:saksi.desa.id,
+    nomor_tps:saksi.tps,
+    suara_per_kandidat:suara,
+    suara_tidak_sah:Number(document.getElementById('sakTdk').value)||0,
+    dpt_total:Number(document.getElementById('sakDpt').value)||0,
+    submitted_by:saksi.nama,
+    foto_c1_url:''
+  });
+  btn.disabled=false;btn.textContent='Kirim Hasil';
+  if(r.success!==false){
+    document.getElementById('saksiOk').classList.remove('hidden');
+    const hasWa=saksi.desa.admin_wa_number;
+    if(hasWa)document.getElementById('btnWaFoto').classList.remove('hidden');
+    toast('Hasil terkirim!');
+  } else toast(r.message||'Gagal mengirim');
+}
+function kirimFotoWa(){
+  const wa=(saksi.desa.admin_wa_number||'').replace(/^0/,'62').replace(/\D/g,'');
+  window.open('https://wa.me/'+wa+'?text='+encodeURIComponent('Halo Ketua, ini foto C1 dari TPS '+saksi.tps+' — '+saksi.nama),'_blank');
+}
+
+function logout(){localStorage.removeItem('qc_admin');localStorage.removeItem('qc_saksi');admin=null;saksi=null;stopLive();show('landing');}
+
+// init
+(function(){
+  if(admin&&admin.desa){
+    document.getElementById('adminTimNama').textContent=admin.desa.nama_desa;
+    document.getElementById('adminKode').textContent=admin.desa.kode_admin;
+    document.getElementById('waKetua').value=admin.desa.admin_wa_number||'';
+    show('admin');loadKandidat();
+  } else if(saksi&&saksi.desa){
+    document.getElementById('saksiNama').textContent=saksi.nama;
+    document.getElementById('saksiTpsLabel').textContent='Saksi TPS '+saksi.tps;
+    document.getElementById('saksiTimLabel').textContent='Tim: '+saksi.desa.nama_desa;
+    show('saksi');
+  } else show('landing');
+})();
+</script>
+</body>
+</html>
