@@ -56,8 +56,8 @@
       <div class="logo">Pilkades<span>Pro</span> Quick Count</div>
       <p>Real-time monitoring untuk tim saksi kandidat</p>
     </div>
-    <button class="role-btn" onclick="show('admin')"><span class="ic">🎯</span><span><b>Ketua Tim / Kandidat</b><small>Bikin ruang quick count, pantau hasil live</small></span></button>
-    <button class="role-btn" onclick="show('saksi')"><span class="ic">📋</span><span><b>Saksi</b><small>Input hasil dari TPS kamu</small></span></button>
+    <button class="role-btn" onclick="show('adminLogin')"><span class="ic">🎯</span><span><b>Ketua Tim / Kandidat</b><small>Bikin ruang quick count, pantau hasil live</small></span></button>
+    <button class="role-btn" onclick="show('saksiLogin')"><span class="ic">📋</span><span><b>Saksi</b><small>Input hasil dari TPS kamu</small></span></button>
   </div>
 
   <!-- ============ ADMIN ============ -->
@@ -180,9 +180,9 @@ function show(v){
   ['landing','adminLogin','admin','saksiLogin','saksi'].forEach(x=>document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).classList.add('hidden'));
   const map={landing:'viewLanding',adminLogin:'viewAdminLogin',admin:'viewAdmin',saksiLogin:'viewSaksiLogin',saksi:'viewSaksi'};
   document.getElementById(map[v]).classList.remove('hidden');
-  if(v==='admin')startLive();
+  if(v==='admin'){if(!admin){show('adminLogin');return;}startLive();}
   else stopLive();
-  if(v==='saksi')loadSaksiForm();
+  if(v==='saksi'){if(!saksi||!saksi.desa){show('saksiLogin');return;}loadSaksiForm();}
 }
 function stopLive(){if(timer){clearInterval(timer);timer=null;}}
 function startLive(){stopLive();loadLive();timer=setInterval(loadLive,8000);}
