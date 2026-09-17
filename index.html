@@ -976,8 +976,14 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('loginPage').classList.remove('hidden');
   if (session) {
-    if (session.role === 'saksi') showSaksiPage();
-    else if (session.role === 'admin') showAdminPage();
+    if (session.kode) {
+      if (session.role === 'saksi') showSaksiPage();
+      else if (session.role === 'admin') showAdminPage();
+    } else {
+      // sesi lama tanpa kode autentikasi — wajib login ulang
+      localStorage.removeItem('pilkades_session');
+      session = null;
+    }
   }
 });
 </script>

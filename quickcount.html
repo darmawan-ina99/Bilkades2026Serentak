@@ -310,18 +310,28 @@ function kirimFotoWa(){
 
 function logout(){localStorage.removeItem('qc_admin');localStorage.removeItem('qc_saksi');admin=null;saksi=null;stopLive();show('landing');}
 
-// init
-(function(){
+// init — sesi tersimpan divalidasi ulang ke server (auto-recovery kalau data tim berubah)
+(async function(){
   if(admin&&admin.desa){
-    document.getElementById('adminTimNama').textContent=admin.desa.nama_desa;
-    document.getElementById('adminKode').textContent=admin.desa.kode_admin;
-    document.getElementById('waKetua').value=admin.desa.admin_wa_number||'';
-    show('admin');loadKandidat();
+    const r=await api('registerDesa',{nama_desa:admin.desa.nama_desa,nama_kandidat_tim:admin.desa.nama_tim||admin.desa.nama_desa,kode_admin:admin.desa.kode_admin});
+    if(r.success&&r.desa){
+      admin={desa:r.desa};
+      localStorage.setItem('qc_admin',JSON.stringify(admin));
+      document.getElementById('adminTimNama').textContent=r.desa.nama_desa;
+      document.getElementById('adminKode').textContent=r.desa.kode_admin+' | Saksi: '+r.desa.kode_saksi;
+      document.getElementById('waKetua').value=r.desa.admin_wa_number||'';
+      show('admin');loadKandidat();
+    } else { logout(); toast('Sesi berakhir — silakan masuk lagi'); }
   } else if(saksi&&saksi.desa){
-    document.getElementById('saksiNama').textContent=saksi.nama;
-    document.getElementById('saksiTpsLabel').textContent='Saksi TPS '+saksi.tps;
-    document.getElementById('saksiTimLabel').textContent='Tim: '+saksi.desa.nama_desa;
-    show('saksi');
+    const r=await api('loginSaksi',{kode_admin:saksi.kode||saksi.desa.kode_saksi||saksi.desa.kode_admin,nomor_tps:saksi.tps,nama_saksi:saksi.nama});
+    if(r.success&&r.desa){
+      saksi={desa:r.desa,saksi:r.saksi,nama:saksi.nama,tps:saksi.tps,kode:saksi.kode||r.desa.kode_saksi};
+      localStorage.setItem('qc_saksi',JSON.stringify(saksi));
+      document.getElementById('saksiNama').textContent=saksi.nama;
+      document.getElementById('saksiTpsLabel').textContent='Saksi TPS '+saksi.tps;
+      document.getElementById('saksiTimLabel').textContent='Tim: '+r.desa.nama_desa;
+      show('saksi');
+    } else { logout(); toast('Sesi berakhir — silakan masuk lagi'); }
   } else show('landing');
 })();
 </script>
