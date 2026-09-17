@@ -275,7 +275,7 @@ tailwind.config = {
 
 <script>
 // =========== CONFIG ===========
-const API_URL = 'https://vesper-921ea8a1.base44.app/functions/pilkadesApi';
+const API_URL = 'https://solene-copy-808ddc96.base44.app/functions/pilkadesApi';
 let session = JSON.parse(localStorage.getItem('pilkades_session') || 'null');
 
 function setSession(s) { localStorage.setItem('pilkades_session', JSON.stringify(s)); session = s; }
@@ -328,7 +328,7 @@ async function loginSaksi() {
   
   if (!res.success) { alert(res.message); return; }
   
-  setSession({ role: 'saksi', desa: res.desa, saksi: res.saksi, calonList: res.calonList, suaraData: res.suaraData || null });
+  setSession({ role: 'saksi', desa: res.desa, saksi: res.saksi, calonList: res.calonList, suaraData: res.suaraData || null, kode: code });
   showSaksiPage();
 }
 
@@ -348,7 +348,7 @@ async function loginAdmin() {
   
   if (!res.success) { alert(res.message); return; }
   
-  setSession({ role: 'admin', desa: res.desa });
+  setSession({ role: 'admin', desa: res.desa, kode: code });
   showAdminPage();
 }
 
@@ -473,7 +473,7 @@ async function submitSuara() {
   document.getElementById('submitBtn').disabled = true;
   
   const res = await callApi('submitSuara', {
-    desa_id: session.desa.id, nomor_tps: session.saksi.nomor_tps,
+    desa_id: session.desa.id, kode: session.kode, nomor_tps: session.saksi.nomor_tps,
     suara_per_kandidat: suara, suara_tidak_sah: tidakSah,
     dpt_total: dpt, submitted_by: session.saksi.nama_saksi
   });
@@ -500,7 +500,7 @@ async function submitSuara() {
 }
 
 async function loadSaksiHistory() {
-  const res = await callApi('getTabulasi', { desa_id: session.desa.id });
+  const res = await callApi('getTabulasi', { desa_id: session.desa.id, kode: session.kode });
   if (!res.success) return;
   const list = document.getElementById('historyList');
   if (res.suaraList.length === 0) { list.innerHTML = '<p class="text-gray-400 text-sm">Belum ada data</p>'; return; }
@@ -537,7 +537,7 @@ function showAdminPage() {
 }
 
 async function renderAdmin() {
-  const res = await callApi('getTabulasi', { desa_id: session.desa.id });
+  const res = await callApi('getTabulasi', { desa_id: session.desa.id, kode: session.kode });
   if (!res.success) return;
   adminData = res;
 
@@ -648,14 +648,14 @@ async function addKandidat() {
   const name = document.getElementById('newKandidatName').value.trim();
   const no = parseInt(document.getElementById('newKandidatNo').value);
   if (!name || !no) { alert('Isi nama dan no urut'); return; }
-  const res = await callApi('addKandidat', { desa_id: session.desa.id, no_urut: no, nama_calon: name });
+  const res = await callApi('addKandidat', { desa_id: session.desa.id, no_urut: no, nama_calon: name, kode_admin: session.kode });
   if (res.success) { document.getElementById('newKandidatName').value = ''; document.getElementById('newKandidatNo').value = ''; renderAdmin(); }
   else alert('Gagal: ' + res.message);
 }
 
 async function removeKandidat(id) {
   if (!confirm('Hapus kandidat ini?')) return;
-  await callApi('removeKandidat', { kandidat_id: id });
+  await callApi('removeKandidat', { kandidat_id: id, desa_id: session.desa.id, kode_admin: session.kode });
   renderAdmin();
 }
 
@@ -664,21 +664,21 @@ async function addSaksi() {
   const tps = parseInt(document.getElementById('newSaksiTps').value);
   const phone = document.getElementById('newSaksiPhone').value.trim();
   if (!name || !tps) { alert('Isi nama dan TPS'); return; }
-  const res = await callApi('addSaksi', { desa_id: session.desa.id, nama_saksi: name, nomor_tps: tps, nomor_wa: phone });
+  const res = await callApi('addSaksi', { desa_id: session.desa.id, nama_saksi: name, nomor_tps: tps, nomor_wa: phone, kode_admin: session.kode });
   if (res.success) { document.getElementById('newSaksiName').value = ''; document.getElementById('newSaksiTps').value = ''; document.getElementById('newSaksiPhone').value = ''; renderAdmin(); }
   else alert('Gagal: ' + res.message);
 }
 
 async function removeSaksi(id) {
   if (!confirm('Hapus saksi ini?')) return;
-  await callApi('removeSaksi', { saksi_id: id });
+  await callApi('removeSaksi', { saksi_id: id, desa_id: session.desa.id, kode_admin: session.kode });
   renderAdmin();
 }
 
 async function saveAdminWa() {
   const num = document.getElementById('adminWaNumber').value.trim().replace(/[^0-9]/g, '');
   if (!num) { document.getElementById('waStatus').innerHTML = '<p class="text-xs text-red-500">Nomor tidak valid</p>'; return; }
-  const res = await callApi('updateAdminWa', { desa_id: session.desa.id, admin_wa_number: num });
+  const res = await callApi('updateAdminWa', { desa_id: session.desa.id, admin_wa_number: num, kode_admin: session.kode });
   if (res.success) {
     session.desa.admin_wa_number = num; setSession(session);
     document.getElementById('waStatus').innerHTML = '<p class="text-xs text-green-600">Nomor WA tersimpan: ' + num + '</p>';
@@ -948,7 +948,7 @@ async function searchDesaLocation() {
 
 async function saveDesaCoordinates(lat, lng) {
   const res = await callApi('updateDesaCoordinates', {
-    desa_id: session.desa.id, latitude: lat, longitude: lng
+    desa_id: session.desa.id, latitude: lat, longitude: lng, kode_admin: session.kode
   });
   if (res.success) {
     if (adminData) {
@@ -964,7 +964,7 @@ async function saveDesaCoordinates(lat, lng) {
 
 async function saveTpsCoordinates(saksiId, lat, lng) {
   const res = await callApi('updateTpsCoordinates', {
-    saksi_id: saksiId, latitude: lat, longitude: lng
+    saksi_id: saksiId, desa_id: session.desa.id, latitude: lat, longitude: lng, kode_admin: session.kode
   });
   if (res.success) {
     renderAdmin();

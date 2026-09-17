@@ -163,7 +163,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API_URL = 'https://vesper-921ea8a1.base44.app/functions/pilkadesApi';
+const API_URL = 'https://solene-copy-808ddc96.base44.app/functions/pilkadesApi';
 let admin = JSON.parse(localStorage.getItem('qc_admin') || 'null');
 let saksi = JSON.parse(localStorage.getItem('qc_saksi') || 'null');
 let calonCache = [];
@@ -197,13 +197,13 @@ async function adminLogin(){
     admin={desa:r.desa};
     localStorage.setItem('qc_admin',JSON.stringify(admin));
     document.getElementById('adminTimNama').textContent=r.desa.nama_desa;
-    document.getElementById('adminKode').textContent=r.desa.kode_admin;
+    document.getElementById('adminKode').textContent=r.desa.kode_admin+' | Saksi: '+r.desa.kode_saksi;
     document.getElementById('waKetua').value=r.desa.admin_wa_number||'';
     show('admin');loadKandidat();
   } else toast(r.message||'Gagal masuk');
 }
 async function loadKandidat(){
-  const r=await api('getTabulasi',{desa_id:admin.desa.id});
+  const r=await api('getTabulasi',{desa_id:admin.desa.id,kode:admin.desa.kode_admin});
   const list=r.calonList||[];
   calonCache=list;
   const el=document.getElementById('kandidatList');
@@ -213,29 +213,29 @@ async function addKandidat(){
   const no=parseInt(document.getElementById('kandNo').value);
   const nama=document.getElementById('kandNama').value.trim();
   if(!no||!nama){toast('Isi nomor urut dan nama');return;}
-  const r=await api('addKandidat',{desa_id:admin.desa.id,no_urut:no,nama_calon:nama});
+  const r=await api('addKandidat',{desa_id:admin.desa.id,no_urut:no,nama_calon:nama,kode_admin:admin.desa.kode_admin});
   if(r.success!==false){document.getElementById('kandNama').value='';loadKandidat();toast('Kandidat ditambahkan');}
   else toast(r.message);
 }
 async function hapusKandidat(id){
   if(!confirm('Hapus kandidat ini?'))return;
-  await api('removeKandidat',{kandidat_id:id});
+  await api('removeKandidat',{kandidat_id:id,desa_id:admin.desa.id,kode_admin:admin.desa.kode_admin});
   loadKandidat();
 }
 function shareKeSaksi(){
   const url=location.href.split('?')[0];
-  const txt=`*QUICK COUNT TIM ${admin.desa.nama_desa}*\n\nSaksi, begini caranya:\n1. Buka link: ${url}\n2. Pilih SAKSI\n3. Kode Tim: *${admin.desa.kode_admin}*\n4. Isi nomor TPS kamu + nama kamu\n5. Setelah hitung selesai, masukkan hasilnya\n\nHasil langsung masuk dashboard tim. Terima kasih!`;
+  const txt=`*QUICK COUNT TIM ${admin.desa.nama_desa}*\n\nSaksi, begini caranya:\n1. Buka link: ${url}\n2. Pilih SAKSI\n3. Kode Saksi: *${admin.desa.kode_saksi}*\n4. Isi nomor TPS kamu + nama kamu\n5. Setelah hitung selesai, masukkan hasilnya\n\nHasil langsung masuk dashboard tim. Terima kasih!`;
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 async function simpanWa(){
   const wa=document.getElementById('waKetua').value.trim();
-  const r=await api('updateAdminWa',{desa_id:admin.desa.id,admin_wa_number:wa});
+  const r=await api('updateAdminWa',{desa_id:admin.desa.id,admin_wa_number:wa,kode_admin:admin.desa.kode_admin});
   if(r.success!==false){admin.desa.admin_wa_number=wa;localStorage.setItem('qc_admin',JSON.stringify(admin));toast('Nomor WA ketua tersimpan');}
   else toast(r.message);
 }
 async function loadLive(){
   if(!admin)return;
-  const r=await api('getTabulasi',{desa_id:admin.desa.id});
+  const r=await api('getTabulasi',{desa_id:admin.desa.id,kode:admin.desa.kode_admin});
   if(!r.success&&r.desa===undefined){toast(r.message||'Gagal memuat');return;}
   const tabs=Object.values(r.tabulasi||{}).sort((a,b)=>b.total_suara-a.total_suara);
   const max=tabs.length?Math.max(...tabs.map(t=>t.total_suara),1):1;
@@ -261,7 +261,7 @@ async function saksiLogin(){
   if(!kode||!tps||!nama){toast('Lengkapi semua kolom');return;}
   const r=await api('loginSaksi',{kode_admin:kode,nomor_tps:tps,nama_saksi:nama});
   if(r.success&&r.desa){
-    saksi={desa:r.desa,saksi:r.saksi,nama,tps};
+    saksi={desa:r.desa,saksi:r.saksi,nama,tps,kode};
     localStorage.setItem('qc_saksi',JSON.stringify(saksi));
     document.getElementById('saksiNama').textContent=nama;
     document.getElementById('saksiTpsLabel').textContent='Saksi TPS '+tps;
@@ -270,7 +270,7 @@ async function saksiLogin(){
   } else toast(r.message||'Kode tim tidak ditemukan');
 }
 async function loadSaksiForm(){
-  const r=await api('getTabulasi',{desa_id:saksi.desa.id});
+  const r=await api('getTabulasi',{desa_id:saksi.desa.id,kode:saksi.kode});
   const list=r.calonList||[];
   calonCache=list;
   document.getElementById('inputKandidat').innerHTML=list.length?list.map(k=>`
@@ -287,6 +287,7 @@ async function saksiSubmit(){
   btn.disabled=true;btn.textContent='Mengirim...';
   const r=await api('submitSuara',{
     desa_id:saksi.desa.id,
+    kode:saksi.kode,
     nomor_tps:saksi.tps,
     suara_per_kandidat:suara,
     suara_tidak_sah:Number(document.getElementById('sakTdk').value)||0,
