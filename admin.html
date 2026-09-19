@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Dharma-labs — Super Admin Pilkades Pro</title>
+<style>
+  :root{--hijau:#0b6e4f;--gelap:#0a1613;--emas:#f0b429;--merah:#e5484d;--abu:#a9bdb5;--card:#12261f;--line:#1e3a2f}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--gelap);color:#eef6f2;line-height:1.5;padding-bottom:40px}
+  .wrap{max-width:640px;margin:0 auto;padding:16px}
+  .brand{text-align:center;padding:26px 0 18px}
+  .brand .logo{font-size:28px;font-weight:800;letter-spacing:.5px}
+  .brand .logo span{color:var(--emas)}
+  .brand p{color:var(--abu);font-size:13px;margin-top:4px}
+  .btn{display:block;width:100%;padding:13px;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:10px}
+  .btn-emas{background:var(--emas);color:#2b1f00}
+  .btn-hijau{background:var(--hijau);color:#fff}
+  .btn-merah{background:transparent;border:1.5px solid var(--merah);color:#ff9b9e}
+  .btn-outline{background:transparent;border:1.5px solid var(--line);color:#eef6f2}
+  .btn:disabled{opacity:.5;cursor:wait}
+  .btn-sm{display:inline-block;width:auto;padding:8px 14px;font-size:13px;margin:4px 4px 0 0;border:none;border-radius:9px;cursor:pointer;font-weight:700}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:12px}
+  .card h3{font-size:15px;margin-bottom:10px;color:#fff}
+  label{display:block;font-size:13px;color:var(--abu);margin:10px 0 4px}
+  input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#0d1f18;color:#fff;font-size:15px}
+  input:focus{outline:2px solid var(--hijau)}
+  .hidden{display:none}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  .stat{background:#0d1f18;border-radius:10px;padding:10px;text-align:center}
+  .stat .v{font-size:18px;font-weight:800;color:#fff}
+  .stat .l{font-size:11px;color:var(--abu)}
+  .tenant{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
+  .tenant.suspended{border-color:var(--merah)}
+  .t-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .t-name{font-weight:800;font-size:16px}
+  .t-sub{color:var(--abu);font-size:12.5px;margin-top:2px}
+  .badge{padding:4px 10px;border-radius:20px;font-size:11.5px;font-weight:800;white-space:nowrap}
+  .badge-active{background:#0d2f22;color:#3ddc97;border:1px solid #1d5c43}
+  .badge-suspended{background:#33131a;color:#ff9b9e;border:1px solid #6e2833}
+  .t-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+  .t-cell{background:#0d1f18;border-radius:9px;padding:7px;text-align:center}
+  .t-cell .v{font-size:14px;font-weight:800;color:#fff}
+  .t-cell .l{font-size:10px;color:var(--abu)}
+  .kode-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .kode-chip{flex:1;min-width:130px;background:#0d1f18;border:1px dashed var(--emas);border-radius:9px;padding:7px 10px}
+  .kode-chip .l{font-size:10px;color:var(--abu)}
+  .kode-chip .k{font-family:monospace;color:var(--emas);font-weight:700;font-size:14px;letter-spacing:1px;cursor:pointer}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--hijau);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;opacity:0;transition:.3s;z-index:99;max-width:90%;text-align:center}
+  .toast.show{opacity:1}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .live{font-size:12px;color:#3ddc97}
+  .footer{text-align:center;color:var(--abu);font-size:12px;margin-top:26px}
+  .footer b{color:#eef6f2}
+  a{color:#7fe0b8}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== LOGIN ===== -->
+  <div id="viewLogin">
+    <div class="brand">
+      <div class="logo">Dharma<span>-</span>labs</div>
+      <p>Super Admin — Pilkades Pro Control Center</p>
+    </div>
+    <div class="card">
+      <h3>🔐 Masuk Kunci Super Admin</h3>
+      <label>Kunci akses</label>
+      <input type="password" id="inpKey" placeholder="Kunci super admin" autocomplete="off">
+      <button class="btn btn-emas" id="btnLogin" onclick="doLogin()">Buka Control Center</button>
+      <p style="color:var(--abu);font-size:12px;margin-top:10px">Kunci salah 8x akan diblok 10 menit. Kunci hanya disimpan di sesi browser ini.</p>
+    </div>
+    <div class="footer"><b>Dharma-labs</b> · WhatsApp 085151164342</div>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div id="viewDash" class="hidden">
+    <div class="brand" style="padding-bottom:6px">
+      <div class="logo">Dharma<span>-</span>labs</div>
+      <p>Control Center — semua tenant Pilkades Pro</p>
+    </div>
+
+    <div class="topbar">
+      <span class="live"><span class="pulse-dot"></span>Live — refresh tiap 30 detik</span>
+      <button class="btn-sm btn-outline" style="background:transparent;border:1px solid var(--line);color:var(--abu)" onclick="doLogout()">Keluar</button>
+    </div>
+
+    <div class="card">
+      <h3>📊 Ringkasan Global</h3>
+      <div class="stats">
+        <div class="stat"><div class="v" id="gTenant">-</div><div class="l">Tenant</div></div>
+        <div class="stat"><div class="v" id="gAktif" style="color:#3ddc97">-</div><div class="l">Aktif</div></div>
+        <div class="stat"><div class="v" id="gSuspend" style="color:#ff9b9e">-</div><div class="l">Ditangguhkan</div></div>
+      </div>
+      <div class="stats" style="grid-template-columns:repeat(2,1fr)">
+        <div class="stat"><div class="v" id="gTps">-</div><div class="l">TPS masuk (semua)</div></div>
+        <div class="stat"><div class="v" id="gSaksi">-</div><div class="l">Saksi terdaftar</div></div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:18px;padding-left:4px">🏢 Tenant</h3>
+    <div id="tenantList"><p style="color:var(--abu);font-size:14px">Memuat...</p></div>
+
+    <div class="footer"><b>Dharma-labs</b> · WhatsApp 085151164342<br>Pilkades Pro — SaaS Tabulasi & Quick Count</div>
+  </div>
+
+</div>
+
+<style>.pulse-dot{display:inline-block;width:8px;height:8px;background:#19b57e;border-radius:50%;animation:p 1.5s infinite;margin-right:6px}@keyframes p{0%,100%{opacity:1}50%{opacity:.3}}</style>
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL = 'https://solene-copy-808ddc96.base44.app/functions/pilkadesApi';
+let KEY = sessionStorage.getItem('dlabs_key') || '';
+let timer = null;
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+function esc(x){ const d=document.createElement('div'); d.textContent=x==null?'':String(x); return d.innerHTML; }
+function fmtTime(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+
+async function api(action, payload) {
+  const res = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action, payload})
+  });
+  return res.json();
+}
+
+async function doLogin() {
+  const k = document.getElementById('inpKey').value.trim();
+  if(!k) return toast('Isi kunci dulu');
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.textContent = 'Memeriksa...';
+  const r = await api('adminLogin', {key: k});
+  btn.disabled = false; btn.textContent = 'Buka Control Center';
+  if(!r.success) return toast(r.message || 'Kunci salah');
+  KEY = k;
+  sessionStorage.setItem('dlabs_key', k);
+  showDash();
+}
+
+function doLogout(){
+  sessionStorage.removeItem('dlabs_key');
+  KEY = '';
+  if(timer) clearInterval(timer);
+  document.getElementById('viewDash').classList.add('hidden');
+  document.getElementById('viewLogin').classList.remove('hidden');
+  document.getElementById('inpKey').value = '';
+}
+
+function showDash(){
+  document.getElementById('viewLogin').classList.add('hidden');
+  document.getElementById('viewDash').classList.remove('hidden');
+  loadOverview();
+  if(timer) clearInterval(timer);
+  timer = setInterval(loadOverview, 30000);
+}
+
+function copyTxt(txt, label){
+  navigator.clipboard.writeText(txt).then(()=>toast(label+' disalin: '+txt)).catch(()=>toast(txt));
+}
+
+async function setStatus(desa_id, status, nama){
+  if(status==='suspended' && !confirm('Tangguhkan akses "'+nama+'"?\nKlien tidak akan bisa login/input/pantau sampai diaktifkan lagi.')) return;
+  const r = await api('adminSetStatus', {key: KEY, desa_id, status});
+  if(r.success){ toast(status==='suspended' ? '"'+nama+'" DITANGGUHKAN ⛔' : '"'+nama+'" diaktifkan kembali ✅'); loadOverview(); }
+  else toast(r.message || 'Gagal');
+}
+
+async function resetKode(desa_id, nama){
+  if(!confirm('Reset kode admin "'+nama+'"?\nKode lama hangat, kode baru akan dibuat. Bagikan kode baru ke klien.')) return;
+  const r = await api('adminResetKode', {key: KEY, desa_id});
+  if(r.success){ toast('Kode admin baru: '+r.kode_admin); loadOverview(); }
+  else toast(r.message || 'Gagal');
+}
+
+async function loadOverview(){
+  const r = await api('adminOverview', {key: KEY});
+  if(!r.success){
+    if(r.message && r.message.includes('Kunci')){ doLogout(); toast('Sesi berakhir. Masuk lagi.'); }
+    return;
+  }
+  const g = r.global;
+  document.getElementById('gTenant').textContent = g.total_tenant;
+  document.getElementById('gAktif').textContent = g.aktif;
+  document.getElementById('gSuspend').textContent = g.ditangguhkan;
+  document.getElementById('gTps').textContent = g.total_tps_masuk;
+  document.getElementById('gSaksi').textContent = g.total_saksi;
+
+  const box = document.getElementById('tenantList');
+  if(!r.tenants.length){ box.innerHTML = '<p style="color:var(--abu)">Belum ada tenant.</p>'; return; }
+  box.innerHTML = r.tenants.map(t => {
+    const susp = t.status === 'suspended';
+    return `
+    <div class="tenant ${susp?'suspended':''}">
+      <div class="t-head">
+        <div>
+          <div class="t-name">${esc(t.nama_desa)}</div>
+          <div class="t-sub">Tim: ${esc(t.nama_tim||'—')}</div>
+          <div class="t-sub">WA admin: ${t.admin_wa? esc(t.admin_wa) : '<i style="color:var(--abu)">belum diisi</i>'}</div>
+          <div class="t-sub">Terdaftar: ${fmtTime(t.created_date)}</div>
+        </div>
+        <span class="badge ${susp?'badge-suspended':'badge-active'}">${susp?'⛔ DITANGGUHKAN':'✅ AKTIF'}</span>
+      </div>
+      <div class="t-grid">
+        <div class="t-cell"><div class="v">${t.saksi}</div><div class="l">Saksi</div></div>
+        <div class="t-cell"><div class="v">${t.tps_masuk}${t.total_tps?'/'+t.total_tps:''}</div><div class="l">TPS masuk</div></div>
+        <div class="t-cell"><div class="v">${(t.total_sah||0).toLocaleString('id-ID')}</div><div class="l">Suara sah</div></div>
+        <div class="t-cell"><div class="v" style="font-size:11px;padding-top:3px">${fmtTime(t.last_submit)}</div><div class="l">Aktivitas akhir</div></div>
+      </div>
+      <div class="kode-row">
+        <div class="kode-chip" onclick="copyTxt('${esc(t.kode_admin)}','Kode admin')" title="Ketuk untuk salin">
+          <div class="l">KODE ADMIN (ketuk salin)</div>
+          <div class="k">${esc(t.kode_admin)}</div>
+        </div>
+        <div class="kode-chip" onclick="copyTxt('${esc(t.kode_saksi)}','Kode saksi')" title="Ketuk untuk salin">
+          <div class="l">KODE SAKSI (ketuk salin)</div>
+          <div class="k">${esc(t.kode_saksi)}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        ${susp
+          ? `<button class="btn-sm btn-hijau" onclick="setStatus('${t.id}','active','${esc(t.nama_desa)}')">✅ Aktifkan</button>`
+          : `<button class="btn-sm btn-merah" onclick="setStatus('${t.id}','suspended','${esc(t.nama_desa)}')">⛔ Tangguhkan (klien telat bayar)</button>`}
+        <button class="btn-sm btn-outline" onclick="resetKode('${t.id}','${esc(t.nama_desa)}')">🔑 Reset kode admin</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+if(KEY){ showDash(); }
+document.getElementById('inpKey').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>

@@ -31,6 +31,27 @@ function genKodeSaksi(): string {
   for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
   return out;
 }
+
+// ===== SUPER ADMIN (Dharma-labs) =====
+// Kunci asli hanya ada di versi deployed (platform), repo publik memuat placeholder.
+const SUPERADMIN_KEY = 'DISET-DI-PLATFORM-REPO-PUBLIK-TIDAK-MEMUAT-KUNCI';
+async function sha256hex(str: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+}
+let adminFail = 0; let adminFailReset = 0;
+async function verifySuperAdmin(p: any): Promise<boolean> {
+  const key = String((p && p.key) || '').trim();
+  const now = Date.now();
+  if (now > adminFailReset) { adminFail = 0; adminFailReset = now + 600000; }
+  if (adminFail >= 8) return false;
+  const a = await sha256hex(key);
+  const b = await sha256hex(SUPERADMIN_KEY);
+  if (a !== b) { adminFail++; return false; }
+  adminFail = 0;
+  return true;
+}
+
 function mapDesa(d: any, includeAdmin = true): any {
   const out: any = {
     id: d.id, nama_desa: d.nama_desa, nama_tim: d.nama_tim,
@@ -88,9 +109,14 @@ Deno.serve(async (req) => {
     const findDesaByKode = async (kode: string) => {
       if (!validKode(kode)) return null;
       let list = await b.entities.DesaPilkades.filter({ kode_admin: kode });
-      if (list.length > 0) return { desa: list[0], role: 'admin' as const };
-      list = await b.entities.DesaPilkades.filter({ kode_saksi: kode });
-      if (list.length > 0) return { desa: list[0], role: 'saksi' as const };
+      if (list.length === 0) list = await b.entities.DesaPilkades.filter({ kode_saksi: kode });
+      if (list.length > 0) {
+        const d = list[0];
+        if (d.status === 'suspended') {
+          throw { suspension: true, nama: d.nama_desa || 'tenant ini' };
+        }
+        return { desa: d, role: (d.kode_admin === kode ? 'admin' : 'saksi') as 'admin' | 'saksi' };
+      }
       return null;
     };
 
@@ -107,6 +133,9 @@ Deno.serve(async (req) => {
 
         const existing = await b.entities.DesaPilkades.filter({ kode_admin });
         if (existing.length > 0) {
+          if (existing[0].status === 'suspended') {
+            return json(fail('Langganan "' + (existing[0].nama_desa || 'tenant ini') + '" sedang DITANGGUHKAN. Akses dihentikan. Hubungi Dharma-labs WA 085151164342.'), 403);
+          }
           return json({ success: true, desa: mapDesa(existing[0], true), message: 'Login berhasil' });
         }
 
@@ -365,10 +394,88 @@ Deno.serve(async (req) => {
         return json({ success: true });
       }
 
+      // ===== SUPER ADMIN PANEL (Dharma-labs) =====
+      case 'adminLogin': {
+        if (!(await verifySuperAdmin(p))) return json(fail('Kunci super admin salah.'), 401);
+        return json({ success: true, message: 'Selamat datang, Dharma-labs' });
+      }
+
+      case 'adminOverview': {
+        if (!(await verifySuperAdmin(p))) return json(fail('Kunci super admin salah.'), 401);
+        const [desaAll, saksiAll, suaraAll] = await Promise.all([
+          b.entities.DesaPilkades.filter({}),
+          b.entities.SaksiPilkades.filter({}),
+          b.entities.SuaraPilkades.filter({})
+        ]);
+        const per: any = {};
+        desaAll.forEach((d: any) => { per[d.id] = { saksi: 0, tps_masuk: 0, total_sah: 0, last_submit: '' }; });
+        saksiAll.forEach((sk: any) => { if (per[sk.desa_id]) per[sk.desa_id].saksi++; });
+        suaraAll.forEach((x: any) => {
+          const a = per[x.desa_id];
+          if (!a) return;
+          a.tps_masuk++;
+          a.total_sah += x.total_sah || 0;
+          if (x.timestamp && x.timestamp > a.last_submit) a.last_submit = x.timestamp;
+        });
+        const tenants = desaAll.map((d: any) => ({
+          id: d.id,
+          nama_desa: d.nama_desa, nama_tim: d.nama_tim,
+          admin_wa: d.admin_wa || '',
+          kode_admin: d.kode_admin, kode_saksi: d.kode_saksi,
+          total_tps: d.total_tps || 0,
+          tanggal_pilkades: d.tanggal_pilkades || '',
+          status: d.status || 'active',
+          created_date: d.created_date,
+          saksi: per[d.id] ? per[d.id].saksi : 0,
+          tps_masuk: per[d.id] ? per[d.id].tps_masuk : 0,
+          total_sah: per[d.id] ? per[d.id].total_sah : 0,
+          last_submit: per[d.id] ? per[d.id].last_submit : ''
+        }));
+        tenants.sort((a: any, c: any) => String(c.created_date || '').localeCompare(String(a.created_date || '')));
+        return json({
+          success: true,
+          tenants,
+          global: {
+            total_tenant: desaAll.length,
+            aktif: desaAll.filter((d: any) => (d.status || 'active') !== 'suspended').length,
+            ditangguhkan: desaAll.filter((d: any) => d.status === 'suspended').length,
+            total_tps_masuk: suaraAll.length,
+            total_saksi: saksiAll.length,
+            updated: new Date().toISOString()
+          }
+        });
+      }
+
+      case 'adminSetStatus': {
+        if (!(await verifySuperAdmin(p))) return json(fail('Kunci super admin salah.'), 401);
+        const status = s(p.status, 20) === 'suspended' ? 'suspended' : 'active';
+        const d = await b.entities.DesaPilkades.get(p.desa_id).catch(() => null);
+        if (!d) return json(fail('Tenant tidak ditemukan'));
+        await b.entities.DesaPilkades.update(p.desa_id, { status });
+        return json({ success: true, status, nama_desa: d.nama_desa });
+      }
+
+      case 'adminResetKode': {
+        if (!(await verifySuperAdmin(p))) return json(fail('Kunci super admin salah.'), 401);
+        const d = await b.entities.DesaPilkades.get(p.desa_id).catch(() => null);
+        if (!d) return json(fail('Tenant tidak ditemukan'));
+        let kode = genKodeSaksi();
+        for (let i = 0; i < 5; i++) {
+          const dupe = await b.entities.DesaPilkades.filter({ kode_admin: kode });
+          if (dupe.length === 0) break;
+          kode = genKodeSaksi();
+        }
+        await b.entities.DesaPilkades.update(p.desa_id, { kode_admin: kode });
+        return json({ success: true, kode_admin: kode, nama_desa: d.nama_desa });
+      }
+
       default:
         return json(fail('Action tidak dikenal'));
     }
   } catch (err: any) {
+    if (err && err.suspension) {
+      return json(fail('Langganan "' + err.nama + '" sedang DITANGGUHKAN. Akses dihentikan. Hubungi Dharma-labs WA 085151164342 untuk aktivasi.'), 403);
+    }
     console.error('pilkadesApi error:', action, err && err.message);
     return json({ success: false, message: 'Terjadi kesalahan server. Coba lagi.' }, 500);
   }
