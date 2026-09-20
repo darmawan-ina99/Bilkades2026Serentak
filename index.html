@@ -290,6 +290,7 @@ async function callApi(action, payload) {
       body: JSON.stringify({ action, payload })
     });
     const data = await res.json();
+    if (data && data.message && String(data.message).toLowerCase().includes('rate')) { window.rateLimitHit = true; setTimeout(()=>{window.rateLimitHit=false;}, 45000); }
     return data;
   } catch (err) {
     console.error('API Error:', err);
@@ -531,9 +532,13 @@ function showAdminPage() {
     document.getElementById('adminWaNumber').value = session.desa.admin_wa_number;
   }
   renderAdmin();
-  // Auto-refresh every 3 seconds for real-time
+  // Auto-refresh hemat: hanya saat tab terlihat, mundur saat server sibuk
   if (window.adminRefresh) clearInterval(window.adminRefresh);
-  window.adminRefresh = setInterval(renderAdmin, 3000);
+  window.adminRefresh = setInterval(() => {
+    if (document.hidden) return;
+    if (window.rateLimitHit) return;
+    renderAdmin();
+  }, 10000);
 }
 
 async function renderAdmin() {

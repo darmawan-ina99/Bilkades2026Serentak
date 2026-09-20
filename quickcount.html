@@ -173,7 +173,9 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 async function api(action, payload){
   try{
     const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,payload})});
-    return await r.json();
+    const d = await r.json();
+    if (d && d.message && String(d.message).toLowerCase().includes('rate')) { window.qcRateLimit = Date.now() + 45000; }
+    return d;
   }catch(e){return {success:false,message:'Koneksi gagal'};}
 }
 function show(v){
@@ -185,7 +187,7 @@ function show(v){
   if(v==='saksi'){if(!saksi||!saksi.desa){show('saksiLogin');return;}loadSaksiForm();}
 }
 function stopLive(){if(timer){clearInterval(timer);timer=null;}}
-function startLive(){stopLive();loadLive();timer=setInterval(loadLive,8000);}
+function startLive(){stopLive();loadLive();timer=setInterval(()=>{if(document.hidden)return;if(window.qcRateLimit&&Date.now()<window.qcRateLimit)return;loadLive();},15000);}
 
 // ---------- ADMIN ----------
 async function adminLogin(){
